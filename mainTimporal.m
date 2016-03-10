@@ -12,8 +12,8 @@ addpath('ml-100k');
 global regular_u regular_m numUser numMovi M
 
 DATA    = load('u.data');
-% sorted  = sortrows(DATA, 4);
-sorted  = DATA;
+sorted  = sortrows(DATA, 4);
+
 dataLen = size(sorted, 1);
 
 numUser = 943;
