@@ -12,7 +12,7 @@ addpath('ml-100k');
 global regular_u regular_m numUser numMovi M
 
 DATA    = load('u.data');
-sorted  = sortrows(DATA, 4);
+% sorted  = sortrows(DATA, 4);
 sorted  = DATA;
 dataLen = size(sorted, 1);
 
