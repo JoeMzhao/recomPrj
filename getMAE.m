@@ -1,4 +1,4 @@
-function MAE = getMAE(trinRateMat, testRateMat)
+function [userMat, moviMat, MAE] = getMAE(trinRateMat, testRateMat)
 
 
 global numUser numMovi M maxIters tolerence

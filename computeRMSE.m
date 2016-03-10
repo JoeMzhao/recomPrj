@@ -1,4 +1,4 @@
-function [ RMSE ] = computeRMSE( R, U, A, IdxR, N )
+function  RMSE  = computeRMSE( R, U, A, IdxR, N )
 
 E = 0;
 

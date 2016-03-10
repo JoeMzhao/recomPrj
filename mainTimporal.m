@@ -9,111 +9,62 @@ clear; close all; clc
 
 addpath('ml-100k');
 
-global regular_u regular_m numUser numMovi M
+global regular_u regular_m numUser numMovi M poolSize maxIters tolerence
 
-DATA    = load('u.data');
-sorted  = sortrows(DATA, 4);
+DATA         = load('u.data');
+sorted       = sortrows(DATA, 4);
+sorted(:, 4) = sorted(: ,4) - sorted(1, 4); 
+dataLen      = size(sorted, 1);
 
-dataLen = size(sorted, 1);
+%% define parameters
 
-numUser = 943;
-numMovi = 1682;
+numUser  = 943;
+numMovi  = 1682;
 
-trinSet = sorted(1: 0.8 * dataLen, :);
-testSet = sorted((1 + 0.8 * dataLen):dataLen, :);
+maxIters  = 500;
+M         = 10;
+regular_u = 1.1;
+regular_m = 0.34;
+tolerence = 1e-6;
 
-trinRateMat  = zeros(numUser, numMovi);
-trinTepoMat  = zeros(numUser, numMovi);
-
+testSet      = sorted((1 + 0.8 * dataLen):dataLen, :);
 testRateMat  = zeros(numUser, numMovi);
 testTepoMat  = zeros(numUser, numMovi);
 
-for i = 1:size(trinSet, 1)
-    trinRateMat(trinSet(i, 1), trinSet(i, 2)) = trinSet(i, 3);
-    trinTepoMat(trinSet(i, 1), trinSet(i, 2)) = trinSet(i, 4);
-end
-
-for i = 1:size(testSet, 1)
+for i   = 1:size(testSet, 1)
     testRateMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 3);
-    testTepoMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 4);
 end
 
-%% define parameters
-maxIters  = 500;
-M         = 5;
-regular_u = 0.1;
-regular_m = 0.1;
-tolerence = 1e-8;
+%%
+% for each user, we need to define a pool
+freq     = tabulate(sorted(:, 1));
+sizeVec  = floor(0.6 * freq(:, 2));
+existVec = zeros(numUser, 1);
 
-%% obtain index of non-zero entries in trinSetMat
-for i = 1:numUser
-    nonZeroRow(i) = {find(trinRateMat(i, :))};
-    zeroRow(i)    = {find(trinRateMat(i, :) == 0)};
+% using the first 20000 data to train the initial two matrices
+oriTrinSet = sorted(1 : 0.05 * dataLen, :);
+comingSet  = sorted(0.2 * dataLen + 1 : 0.8 * dataLen, :);
+
+buff       = tabulate(oriTrinSet(:, 1));
+existVec(1:size(buff, 1))   = buff(:, 2);
+
+trinRateMat  = zeros(numUser, numMovi);
+for i = 1:size(oriTrinSet, 1)
+    trinRateMat(oriTrinSet(i, 1), oriTrinSet(i, 2)) = oriTrinSet(i, 3);
 end
 
-for i = 1:numMovi
-    nonZeroCol(i) = {find(trinRateMat(:, i))};
+dstctIdx = unique(oriTrinSet(:,1));
+poolAry  = cell(numUser, 1);
+
+for i = 1:length(dstctIdx)   
+    poolAry{dstctIdx(i)} = oriTrinSet(find((oriTrinSet(:, 1)) ==...
+                                                         dstctIdx(i)), :);
 end
 
-%% normalisation
-% rateMean = zeros(1, numUser);
-% rateStd  = zeros(1, numUser);
-% backup   = trinRateMat;
-% 
-% for i = 1:numUser                
-%         idx         = cell2mat(nonZeroRow(i));
-%         rateMean(i) = mean(trinRateMat(i,idx));
-%         rateStd(i)  = std(trinRateMat(i,idx));
-%         
-%    if ~isempty(idx)
-%       if rateStd(i) == 0
-%             trinRateMat(i,idx) = 0;
-%        else
-%          trinRateMat(i,idx) = (trinRateMat(i,idx) - ...
-%                                 rateMean(i))./rateStd(i);
-%        end
-%    end   
-% end
+
+% [userMat, moviMat, MAE] = getMAE(trinRateMat, testRateMat);
 
 
-%% ALS algorithm
-
-userMatOrig = rand(M, numUser);
-moviMatOrig = rand(M, numMovi);
-
-for i = 1:numMovi
-    idx = cell2mat(nonZeroCol(i));
-    if ~isempty(idx)
-        moviMatOrig(1,i) = mean(trinRateMat(idx,i));
-    end
-end
-
-tolerBuffer = zeros(1,maxIters);
-noZeroEntri = length(find(trinRateMat));
-
-for k = 1:maxIters
-    
-    [userMat, moviMat] = ALSUpdate(trinRateMat, userMatOrig, moviMatOrig,...
-                                    nonZeroRow, nonZeroCol);
-    
-    tolerBuffer(k) = computeRMSE(trinRateMat , userMat, moviMat, ...
-                                            nonZeroRow, noZeroEntri);
-    
-    if k>1 && abs(tolerBuffer(k) - tolerBuffer(k-1)) < tolerence
-        break;
-    end
-    
-    userMatOrig = userMat;
-    moviMatOrig = moviMat;
-    k
- if k == maxIters
-     disp('Max number of interation reached..');
- end
-    
-end
-
-pred = userMat' * moviMat;
-MAE  = computeMAE( testRateMat, pred)
 
 
     
