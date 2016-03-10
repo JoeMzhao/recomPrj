@@ -39,13 +39,14 @@ end
 % for each user, we need to define a pool
 freq     = tabulate(sorted(:, 1));
 sizeVec  = floor(0.6 * freq(:, 2));
-existVec = zeros(numUser, 1);
+order    = sizeVec + 5;
 
-% using the first 20000 data to train the initial two matrices
+% using the first part of data to train the initial two matrices
 oriTrinSet = sorted(1 : 0.05 * dataLen, :);
 comingSet  = sorted(0.05 * dataLen + 1 : 0.8 * dataLen, :);
 
-buff        = tabulate(oriTrinSet(:, 1));
+existVec = zeros(numUser, 1);
+buff     = tabulate(oriTrinSet(:, 1));
 existVec(1:size(buff, 1))   = buff(:, 2);
 
 trinRateMat = zeros(numUser, numMovi);
@@ -64,6 +65,9 @@ end
 [userMat, moviMat, MAE] = getMAE(trinRateMat, testRateMat);
 
 % eliminate oldest data if number of existing rates exceed pool size
+% the original data is used in training the original 2 matrices
+% is it ok to delete them?
+
 for i = 1:numUser
     if existVec(i) > sizeVec(i)
         amout = existVec(i) - sizeVec(i);
@@ -74,37 +78,42 @@ end
 
 %% when a new data comes...
 %comingSet
+global alpha beta T
 
-% for i = 1:size(comingSet, 1)
+alpha  = 0.5;
+beta   = 0.5;
+T      = 5;
+addIdx = 1;
+
+for i = 1:size(comingSet, 1)
+    i
+    diceIn = rand(0, 1);
+    uidx    = comingSet(i, 1);
+    midx    = comingSet(i, 2);
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if isempty(poolAry{uidx})
+        continue;
+    end
     
-        
-    
+      if diceIn <= ( 1 - sizeVec(uidx) / order(uidx) )
+            order(uidx) = order(uidx) + 1;
+%             diceOut = 
+            poolAry{uidx}(addIdx, :) = comingSet(i, :);
+            addIdx  = addIdx + 1;
+      end
+       
+      for iter = 1: T
+         [Wu, Hp] = increUpdate(poolAry{uidx}, userMat(:, uidx),...
+                                                        moviMat(:, midx));
+         userMat(:, uidx) = Wu;
+         moviMat(:, midx) = Hp;
+      end
+end
+
+pred = userMat' * moviMat;
+
+MAE2 = computeMAE(pred, testRateMat)   
+
     
 
 

@@ -39,7 +39,7 @@ for k = 1:maxIters
     
     userMatOrig = userMat;
     moviMatOrig = moviMat;
-    k
+    
  if k == maxIters
      disp('Max number of interation reached..');
  end
