@@ -80,34 +80,38 @@ end
 %comingSet
 global alpha beta T
 
-alpha  = 0.5;
-beta   = 0.5;
+alpha  = 1e-5;
+beta   = 1e-5;
 T      = 5;
-addIdx = 1;
+
 
 for i = 1:size(comingSet, 1)
     i
-    diceIn = rand(0, 1);
+    diceIn = rand(1);
     uidx    = comingSet(i, 1);
     midx    = comingSet(i, 2);
-    
-    if isempty(poolAry{uidx})
-        continue;
-    end
-    
+    addIdx  = 1;
+      
       if diceIn <= ( 1 - sizeVec(uidx) / order(uidx) )
             order(uidx) = order(uidx) + 1;
 %             diceOut = 
             poolAry{uidx}(addIdx, :) = comingSet(i, :);
             addIdx  = addIdx + 1;
+%             disp('updated!')
+            
       end
        
+    if ~isempty(poolAry{uidx})
       for iter = 1: T
-         [Wu, Hp] = increUpdate(poolAry{uidx}, userMat(:, uidx),...
-                                                        moviMat(:, midx));
+         [Wu, Hp] = increUpdate(poolAry{uidx}, userMat, moviMat, userMat(:, uidx));
+         
          userMat(:, uidx) = Wu;
-         moviMat(:, midx) = Hp;
+         moviMat = Hp;
+%          disp('ALGO used!')
       end
+    else
+        continue;
+    end
 end
 
 pred = userMat' * moviMat;

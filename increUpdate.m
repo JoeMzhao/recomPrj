@@ -1,20 +1,36 @@
-function [Wu, Hp] = increUpdate (pool, Wu, Hp)
+function [Wu, moviMat] = increUpdate (pool, userMat, moviMat, Wu)
 
     global alpha beta
-    
-    newRate = pool(1, 3);
     
     snIdx = find(pool(:, 3) <= 3);
     spIdx = find(pool(:, 3) >  3);
     
-    avgSN = mean(pool(snIdx, 3));  
-    ita   = max(0, newRate - avgSN);
+    numNega = length(snIdx);
+    numPosi = length(spIdx);
     
-%     sigRa = sum(Hp(snIdx)) / (length(snIdx));
-    sigRa = 0;
+    avgSN = mean(pool(snIdx, 3));
+    avgNH = sum(moviMat(:, snIdx), 2) ./ numNega ;
     
-    Wu = Wu + alpha * ita * (Hp - sigRa) - alpha * beta * Wu;
-    Hp = Hp + alpha * ita * Wu - alpha * beta * Hp;
+for i = 1:numPosi
+        
+   ratePosi = pool(spIdx(i), 3);
+   ita      = max(0, ratePosi - avgSN);
+    
+
+   Wu = Wu + alpha * ita * (moviMat(:, spIdx(i)) - avgNH)- alpha * beta * Wu;
+    
+   moviMat(:, spIdx(i)) = moviMat(:, spIdx(i)) + alpha * ita .* Wu - ...
+                                    alpha * beta .* moviMat(:, spIdx(i));
+   
+   for j = 1:numNega
+       moviMat(:, snIdx(j)) = moviMat(:, snIdx(j)) - alpha * ita * Wu - ...
+                                alpha * beta * moviMat(:, snIdx(j));
+   end
+   
+end
+
+                
+    
     
   
     
