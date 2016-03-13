@@ -22,7 +22,7 @@ numUser  = 943;
 numMovi  = 1682;
 
 maxIters  = 500;
-M         = 10;
+M         = 20;
 regular_u = 1.1;
 regular_m = 0.34;
 tolerence = 1e-6;
@@ -63,6 +63,9 @@ for i = 1:length(dstctIdx)
 end
 
 [userMat, moviMat, MAE] = getMAE(trinRateMat, testRateMat);
+kkk = userMat;
+jjj = moviMat;
+MAE
 
 % eliminate oldest data if number of existing rates exceed pool size
 % the original data is used in training the original 2 matrices
@@ -80,14 +83,14 @@ end
 %comingSet
 global alpha beta T
 
-alpha  = 1e-5;
-beta   = 1e-5;
-T      = 5;
+alpha  = 1e-6;
+beta   = 1e-6;
+T      = 3;
 
 
 for i = 1:size(comingSet, 1)
-    i
-    diceIn = rand(1);
+  i
+    diceIn  = rand(1);
     uidx    = comingSet(i, 1);
     midx    = comingSet(i, 2);
     addIdx  = 1;
@@ -116,7 +119,9 @@ end
 
 pred = userMat' * moviMat;
 
-MAE2 = computeMAE(pred, testRateMat)   
+MAE2 = computeMAE(userMat' * moviMat, testRateMat)   
+MAE
+ 
 
     
 
