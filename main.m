@@ -12,8 +12,8 @@ addpath('ml-100k');
 global regular_u regular_m numUser numMovi M
 
 DATA    = load('u.data');
-% sorted  = sortrows(DATA, 4);
-sorted  = DATA;
+sorted  = sortrows(DATA, 4);
+% sorted  = DATA;
 dataLen = size(sorted, 1);
 
 numUser = 943;
@@ -54,26 +54,6 @@ end
 for i = 1:numMovi
     nonZeroCol(i) = {find(trinRateMat(:, i))};
 end
-
-%% normalisation
-% rateMean = zeros(1, numUser);
-% rateStd  = zeros(1, numUser);
-% backup   = trinRateMat;
-% 
-% for i = 1:numUser                
-%         idx         = cell2mat(nonZeroRow(i));
-%         rateMean(i) = mean(trinRateMat(i,idx));
-%         rateStd(i)  = std(trinRateMat(i,idx));
-%         
-%    if ~isempty(idx)
-%       if rateStd(i) == 0
-%             trinRateMat(i,idx) = 0;
-%        else
-%          trinRateMat(i,idx) = (trinRateMat(i,idx) - ...
-%                                 rateMean(i))./rateStd(i);
-%        end
-%    end   
-% end
 
 
 %% ALS algorithm

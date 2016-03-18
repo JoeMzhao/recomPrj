@@ -1,6 +1,6 @@
 function [ userMatOrig, moviMatOrig ] = ALSUpdate( trinRateMat, userMatOrig,...
     moviMatOrig, nonZeroRow, nonZeroCol )
-global regular_u regular_m numMovi M
+global alpha beta numMovi M
 
 % update user matrix
     for i = 1:size(trinRateMat, 1)
@@ -11,7 +11,7 @@ global regular_u regular_m numMovi M
             nui = size(Ii, 2);
             Mi  = moviMatOrig(:, Ii);
             Ri  = trinRateMat(i, Ii);
-            userMatOrig(:, i) = (Mi*Mi' + regular_u*nui*eye(M)) \ (Mi*Ri');
+            userMatOrig(:, i) = (Mi*Mi' + alpha*nui*eye(M)) \ (Mi*Ri');
         end
 
     end
@@ -25,7 +25,7 @@ global regular_u regular_m numMovi M
             nmj = size(Ij, 1);
             Uj  = userMatOrig(:, Ij);
             Rj  = trinRateMat(Ij, j);
-            moviMatOrig(:, j) = (Uj*Uj' + regular_m*nmj*eye(M)) \ (Uj*Rj);
+            moviMatOrig(:, j) = (Uj*Uj' + beta*nmj*eye(M)) \ (Uj*Rj);
         end
 
     end
