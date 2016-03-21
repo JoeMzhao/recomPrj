@@ -18,7 +18,7 @@ maxIters     = 100;
 alpha        = 1e-5;
 beta         = 1e-5;
 tolerence    = 1e-5; 
-T            = 10;
+T            = 3;
 
 %% Process the data and obtain rate matrices
 
@@ -37,8 +37,8 @@ poolSize  = 70000;
 pool      = trainSet(1:poolSize, :);
 
 M         = 20;
-userMat   = rand(M, numUser);
-moviMat   = rand(M, numMovi);
+userMat   = rand(M, numUser); % use the ALS algorithm to train, instead of
+moviMat   = rand(M, numMovi); % using random vectors
 
 %% The initial phase >> train two initial matrices
 iniPred   = userMat' * moviMat;
@@ -59,18 +59,23 @@ for i = (poolSize + 1) : dataLen * 0.8
            
         userUpool2 = pool(find(pool(:, 1) == trainSet(i, 1)), :);
       
-    SPuIdx = SamplePositiveInput(curPred, userUpool1, trainSet(i, :));
-   
-    SNuIdx = SampleNegativeInput(curPred, userUpool2, SPuIdx, trainSet(i, :));
-          
-    uID = trainSet(i, 1);
+        SPuIdx = SamplePositiveInput(curPred, userUpool1, trainSet(i, :));
+
+        SNuIdx = SampleNegativeInput(curPred, userUpool2, SPuIdx, trainSet(i, :));
+
+        uID = trainSet(i, 1);
 
         for round = 1:T
             for ii = 1:length(SPuIdx)
                 rate_hat = curPred(uID, SPuIdx(ii));
                 rate_avg = mean(curPred(uID, SNuIdx(:)));
                 ita      = max(0, rate_hat - rate_avg);
-                nega_avg = sum(moviMat(:, SNuIdx(:)), 2) ./ length(SNuIdx);
+                
+                if isempty(SNuIdx) 
+                    nega_avg = zeros(M, 1);
+                else
+                    nega_avg = sum(moviMat(:, SNuIdx(:)), 2) ./ length(SNuIdx);
+                end
 
                 userMat(:, uID) = userMat(:, uID) + ...
                                     alpha * ita .* (moviMat(:, ii) - nega_avg) - ...
@@ -89,7 +94,7 @@ for i = (poolSize + 1) : dataLen * 0.8
 end    
 
 nowPred = userMat' * moviMat;
-getMAE  = computeMAE(testRateMat, nowPred)
+getMAE  = computeMAE(testRateMat, curPred)
     
     
     
