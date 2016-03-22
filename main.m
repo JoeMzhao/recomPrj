@@ -9,7 +9,7 @@ clear; close all; clc
 
 addpath('ml-100k');
 
-global regular_u regular_m numUser numMovi M
+global alpha beta numUser numMovi M regular_u regular_v
 
 DATA    = load('u.data');
 sorted  = sortrows(DATA, 4);
@@ -19,7 +19,7 @@ dataLen = size(sorted, 1);
 numUser = 943;
 numMovi = 1682;
 
-trinSet = sorted(1: 0.8 * dataLen, :);
+trinSet = sorted(1: 0.2 * dataLen, :);
 testSet = sorted((1 + 0.8 * dataLen):dataLen, :);
 
 trinRateMat  = zeros(numUser, numMovi);
@@ -39,11 +39,12 @@ for i = 1:size(testSet, 1)
 end
 
 %% define parameters
-maxIters  = 500;
-M         = 5;
-regular_u = 0.1;
-regular_m = 0.1;
-tolerence = 1e-8;
+maxIters  = 1000;
+M         = 20;
+alpha     = 1e-5;
+beta      = 1e-5;
+
+tolerence = 1e-5;
 
 %% obtain index of non-zero entries in trinSetMat
 for i = 1:numUser

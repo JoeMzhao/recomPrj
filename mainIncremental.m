@@ -2,7 +2,7 @@ clear; close all; clc
 
 addpath('ml-100k');
 
-global alpha beta numUser numMovi poolSize M maxIters tolerence T
+global alpha beta numUser numMovi poolSize M maxIters tolerence T regular_u regular_v
 
 rawData      = load('u.data');
 sorted       = sortrows(rawData, 4);
@@ -17,15 +17,22 @@ numMovi      = 1682;
 maxIters     = 100; 
 alpha        = 1e-5;
 beta         = 1e-5;
+regular_u    = 0.1;
+regular_v    = 0.1;
 tolerence    = 1e-5; 
-T            = 3;
+T            = 5;
 
 %% Process the data and obtain rate matrices
+
+poolSize  = 75000;
+pool      = trainSet(1:poolSize, :);
+M         = 20;
+
 
 trainRateMat  = zeros(numUser, numMovi);
 testRateMat   = zeros(numUser, numMovi);
 
-for i  = 1 : dataLen * 0.8
+for i  = 1 : poolSize
     trainRateMat(trainSet(i, 1), trainSet(i, 2)) = trainSet(i, 3);
 end
 
@@ -33,23 +40,22 @@ for i  = 1 : size(testSet, 1)
     testRateMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 3);  
 end
 
-poolSize  = 70000;
-pool      = trainSet(1:poolSize, :);
-
-M         = 20;
-userMat   = rand(M, numUser); % use the ALS algorithm to train, instead of
-moviMat   = rand(M, numMovi); % using random vectors
 
 %% The initial phase >> train two initial matrices
-iniPred   = userMat' * moviMat;
-[userMat, moviMat, MAE1] = getMAE(iniPred, testRateMat); disp(MAE1);
+[userMat, moviMat, MAE1] = getMAE(trainRateMat, testRateMat);
 curPred   = userMat' * moviMat;
 
 for i = (poolSize + 1) : dataLen * 0.8
     i
+    curPred   = userMat' * moviMat;
+    
     userUpool1 = pool(find(pool(:, 1) == trainSet(i, 1)), :);
         
     if inORnot(trainSet(i, 4))
+        
+        trainRateMat(trainSet(i, 1), trainSet(i, 2)) = trainSet(i, 3);
+        
+        uID = trainSet(i, 1);
         
         timeArry  = pool(:, 4);
            
@@ -59,12 +65,28 @@ for i = (poolSize + 1) : dataLen * 0.8
            
         userUpool2 = pool(find(pool(:, 1) == trainSet(i, 1)), :);
       
-        SPuIdx = SamplePositiveInput(curPred, userUpool1, trainSet(i, :));
+        SPuIdxRaw = SamplePositiveInput(curPred, userUpool1, trainSet(i, :));
 
-        SNuIdx = SampleNegativeInput(curPred, userUpool2, SPuIdx, trainSet(i, :));
-
-        uID = trainSet(i, 1);
-
+        SNuIdxRaw = SampleNegativeInput(curPred, userUpool2, SPuIdxRaw, trainSet(i, :));
+        
+        posiIdx = randperm(length(SPuIdxRaw));
+       
+        SPuIdx = SPuIdxRaw(posiIdx(1:ceil(length(posiIdx)/2)));
+        
+        SNuIdx = [];
+        
+        negaLen = length(SNuIdxRaw);
+        
+        for iii = 1:negaLen
+            if curPred(uID, SNuIdxRaw(iii)) >= 3.8
+                    SNuIdx = [SNuIdx; SNuIdxRaw(iii)];
+            end
+            if (trainRateMat(uID, SNuIdxRaw(iii)) == 0) && (mean(trainRateMat(:, SNuIdxRaw(iii))>3.8))
+                    SNuIdx = [SNuIdx; SNuIdxRaw(iii)];
+            end
+        end
+        
+                      
         for round = 1:T
             for ii = 1:length(SPuIdx)
                 rate_hat = curPred(uID, SPuIdx(ii));
@@ -93,8 +115,10 @@ for i = (poolSize + 1) : dataLen * 0.8
     end          
 end    
 
+MAE1
 nowPred = userMat' * moviMat;
-getMAE  = computeMAE(testRateMat, curPred)
+getMAE  = computeMAE(testRateMat, nowPred)
+
     
     
     
