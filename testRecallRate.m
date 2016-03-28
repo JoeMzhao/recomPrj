@@ -9,17 +9,17 @@ clear; close all; clc
 
 addpath('ml-100k');
 
-global alpha beta numUser numMovi M regular_u regular_v
+global numUser numMovi M regular_u regular_v
 
 DATA    = load('u.data');
 sorted  = sortrows(DATA, 4);
-% sorted  = DATA;
+sorted  = DATA;
 dataLen = size(sorted, 1);
 
 numUser = 943;
 numMovi = 1682;
 
-trinSet = sorted(1: 0.2 * dataLen, :);
+trinSet = sorted(1: 0.8 * dataLen, :);
 testSet = sorted((1 + 0.8 * dataLen):dataLen, :);
 
 trinRateMat  = zeros(numUser, numMovi);
@@ -41,8 +41,8 @@ end
 %% define parameters
 maxIters  = 1000;
 M         = 20;
-alpha     = 1e-5;
-beta      = 1e-5;
+regular_u = 0.01;
+regular_v = 0.01;
 
 tolerence = 1e-5;
 
@@ -86,19 +86,19 @@ for k = 1:maxIters
     
     userMatOrig = userMat;
     moviMatOrig = moviMat;
-    k
+
  if k == maxIters
-     disp('Max number of interation reached..');
+     disp('Max number of interation reached.');
  end
-    
+    k
 end
 
 curPred = userMat' * moviMat;
-MAE  = computeMAE( testRateMat, pred)
+MAE     = computeMAE(testRateMat, curPred)
 
+%% calculating the recall rate
 
-
-releventSet = unique(testSet(:, 1));
+releventSet   = unique(testSet(:, 1));
 numUserInTest = length(releventSet);
 
 for j = 1:size(testSet, 1)
@@ -107,61 +107,59 @@ for j = 1:size(testSet, 1)
         releventSet(idx, len + 1) = testSet(j, 2);
 end
 uniOn   = cell(numUserInTest, 2);
-
-for i = 1:size(testSet, 1)
+for i = 1:numUserInTest
     uniOn{i, 1} = releventSet(i, 1);
 end
 
-N       = 10;
+N       = 20;
 
 for i = 1:size(testSet, 1)
-    testUid   = testSet(i, 1);
-    buff1     = curPred(testUid, :);
-    buff      = sort(buff1, 2);
-    buff      = buff(end-N+1:end);
-    recom     = zeros(1, N);
+    testUid       = testSet(i, 1);
+    allRatesU     = curPred(testUid, :);
+    sortedRates   = sort(allRatesU);
+    sortedRates   = sortedRates(end-N+1:end);
+    recomCell     = cell(1, N);
 
-    for jjjj = 1:N
-
-        k  = buff(jjjj);
+    for recoIdx = 1:N
+        k       = sortedRates(recoIdx);
         idxBuff = find(curPred(testUid, :) == k);
-
-        if length(idxBuff) > 1
-            idxBuff = idxBuff(1);
-        end
-
-        recom(jjjj) = idxBuff;
+        recomCell{recoIdx} = idxBuff;
     end
-
+    recom         = unique(cell2mat(recomCell));
+    recom         = recom(1:N);
+    
     uniIdx = find(testUid == releventSet(:, 1));
     uniOn{uniIdx, 2} = union(uniOn{uniIdx, 2}, recom);
 end
 
 releSet = cell(numUserInTest,1);
+
 for i = 1:numUserInTest   
     releSet{i,1} = releventSet(i, 2:end);
 end
 
 intSectionSize = zeros(numUserInTest, 1);
-intSection = cell(numUserInTest,1);
+intSection     = cell(numUserInTest,1);
 
 for i = 1:numUserInTest
-    intSection{i,1}   = intersect(releSet{i, 1}, uniOn{i, 2});
-    intSectionSize(i) = length(intersect(releSet{i, 1}, uniOn{i, 2}));
+    intSection{i,1}   = intersect(releSet{i, 1}', uniOn{i, 2});
+    intSectionSize(i) = length(intSection{i,1});
 end
 
-releventSet  = releventSet(:, 2:end);
-releventSize = zeros(numUserInTest, 1);
-for i = 1:size(releventSet, 1)
-    for j = 1:size(releventSet,2)
-        if releventSet(i,j)~=0
-            releventSize(i) = releventSize(i) + 1;
+releSet = cell2mat(releSet);
+
+relevenSize = zeros(1, numUserInTest);
+
+for i = 1:numUserInTest
+    for j = 1:size(releSet,2)
+        if releSet(i, j) ~= 0
+            relevenSize(i) = relevenSize(i) + 1;
         end
     end
 end
 
-mean(intSectionSize./releventSize)
 
+mean(intSectionSize./relevenSize')
 
 
 
