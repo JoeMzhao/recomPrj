@@ -8,25 +8,35 @@ clear; close all; clc
 %         The time stamps are unix seconds since 1/1/1970 UTC  
 
 addpath('ml-100k');
+addpath('ml-1m');
 
 global numUser numMovi M regular_u regular_v
 
 DATA    = load('u.data');
-sorted  = sortrows(DATA, 4);
+% sorted  = sortrows(DATA, 4);
+
 sorted  = DATA;
 dataLen = size(sorted, 1);
 
-numUser = 943;
-numMovi = 1682;
+% numUser = 943;
+% numMovi = 1682;
 
-trinSet = sorted(1: 0.8 * dataLen, :);
-testSet = sorted((1 + 0.8 * dataLen):dataLen, :);
+numUser = 6040;
+numMovi = 3952;
+
+trinSet = sorted(1: 0.98 * dataLen, :);
+testSet = sorted((1 + 0.98 * dataLen):dataLen, :);
 
 trinRateMat  = zeros(numUser, numMovi);
 trinTepoMat  = zeros(numUser, numMovi);
 
 testRateMat  = zeros(numUser, numMovi);
 testTepoMat  = zeros(numUser, numMovi);
+
+for i = 1:size(DATA, 1)
+    wholeRateMat(DATA(i, 1), DATA(i, 2)) = DATA(i, 3);
+end
+
 
 for i = 1:size(trinSet, 1)
     trinRateMat(trinSet(i, 1), trinSet(i, 2)) = trinSet(i, 3);
@@ -39,10 +49,10 @@ for i = 1:size(testSet, 1)
 end
 
 %% define parameters
-maxIters  = 1000;
+maxIters  = 500;
 M         = 20;
-regular_u = 0.01;
-regular_v = 0.01;
+regular_u = 0.34;
+regular_v = 0.1;
 
 tolerence = 1e-5;
 
@@ -97,96 +107,39 @@ curPred = userMat' * moviMat;
 MAE     = computeMAE(testRateMat, curPred)
 
 %% calculating the recall rate
+N       = 10;
+counter = 0;
 
-releventSet   = unique(testSet(:, 1));
-numUserInTest = length(releventSet);
+for i = 1:length(testSet)
 
-for j = 1:size(testSet, 1)
-        idx = find(releventSet(:, 1) == testSet(j, 1));
-        len = length(find(releventSet(idx, :)~=0));
-        releventSet(idx, len + 1) = testSet(j, 2);
-end
-uniOn   = cell(numUserInTest, 2);
-for i = 1:numUserInTest
-    uniOn{i, 1} = releventSet(i, 1);
-end
-
-N       = 20;
-
-for i = 1:size(testSet, 1)
-    testUid       = testSet(i, 1);
-    allRatesU     = curPred(testUid, :);
-    sortedRates   = sort(allRatesU);
-    sortedRates   = sortedRates(end-N+1:end);
-    recomCell     = cell(1, N);
-
-    for recoIdx = 1:N
-        k       = sortedRates(recoIdx);
-        idxBuff = find(curPred(testUid, :) == k);
-        recomCell{recoIdx} = idxBuff;
+    uID      = testSet(i, 1);
+    moviID   = testSet(i, 2);
+    
+    oneKidx  = find(wholeRateMat(uID, :) == 0);    
+    oneKidx  = oneKidx(randperm(length(oneKidx)));
+    oneKidx  = oneKidx(1:50);
+    
+    corresp  = curPred(uID, moviID);  
+    oneKrate = sort(curPred(uID, oneKidx));
+    
+    thre     = find(oneKrate > corresp);
+    
+    if length(thre) <= (N-1)
+        counter = counter + 1;
     end
-    recom         = unique(cell2mat(recomCell));
-    recom         = recom(1:N);
     
-    uniIdx = find(testUid == releventSet(:, 1));
-    uniOn{uniIdx, 2} = union(uniOn{uniIdx, 2}, recom);
-end
-
-releSet = cell(numUserInTest,1);
-
-for i = 1:numUserInTest   
-    releSet{i,1} = releventSet(i, 2:end);
-end
-
-intSectionSize = zeros(numUserInTest, 1);
-intSection     = cell(numUserInTest,1);
-
-for i = 1:numUserInTest
-    intSection{i,1}   = intersect(releSet{i, 1}', uniOn{i, 2});
-    intSectionSize(i) = length(intSection{i,1});
-end
-
-releSet = cell2mat(releSet);
-
-relevenSize = zeros(1, numUserInTest);
-
-for i = 1:numUserInTest
-    for j = 1:size(releSet,2)
-        if releSet(i, j) ~= 0
-            relevenSize(i) = relevenSize(i) + 1;
-        end
-    end
-end
-
-
-mean(intSectionSize./relevenSize')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+%     for j = length(oneKrate):-1:(length(oneKrate)-N+1)
+%         reco{i, j} = find(curPred(uID, :) == oneKrate(j));
+%     end
+%     
+%     recomm = cell2mat(reco(i, :));
+%     
+%     if intersect(recomm, moviID)
+%         counter = counter + 1;
+%     end
     
-        
-    
-    
+end
+counter/size(testSet, 1)
+
 
 
