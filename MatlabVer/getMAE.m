@@ -26,7 +26,7 @@ tolerBuffer = zeros(1,maxIters);
 noZeroEntri = length(find(trinRateMat));
 
 for k = 1:maxIters
-    k
+
     [userMat, moviMat] = ALSUpdate(trinRateMat, userMatOrig, moviMatOrig,...
                                     nonZeroRow, nonZeroCol);
     

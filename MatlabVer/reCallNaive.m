@@ -8,14 +8,14 @@ clear; close all; clc
 %         The time stamps are unix seconds since 1/1/1970 UTC  
 
 addpath('ml-100k');
-addpath('ml-1m');
+%addpath('ml-1m');
 
 global numUser numMovi M regular_u regular_v
 
  DATA    = load('u.data');
 % DATA    = load('ratings1.dat');
 sorted  = sortrows(DATA, 4);
-sorted  = DATA;
+%sorted  = DATA;
 dataLen = size(sorted, 1);
 
 numUser = 943;
@@ -107,7 +107,7 @@ curPred = userMat' * moviMat;
 MAE     = computeMAE(testRateMat, curPred)
 
 %% calculating the recall rate
-N       = 100;
+N       = 10;
 
 counter1 = 0;
 counter2 = 0;
@@ -125,7 +125,7 @@ for i = 1:length(testSet)
         
     oneKidx  = find(trinRateMat(uID, :) == 0);    
     oneKidx  = oneKidx(randperm(length(oneKidx)));
-    oneKidx  = oneKidx(1:800);
+    oneKidx  = oneKidx(1:100);
     
     corresp  = curPred(uID, moviID);  
     oneKrate = sort(curPred(uID, oneKidx));
@@ -136,18 +136,11 @@ for i = 1:length(testSet)
         counter1 = counter1 + 1;
     end
     
-%     for j = length(oneKrate):-1:(length(oneKrate)-N+1)
-%         reco{i, j} = find(curPred(uID, :) == oneKrate(j));
-%     end
-%     
-%     recomm = cell2mat(reco(i, :));
-%     
-%     if intersect(recomm, moviID)
-%         counter = counter + 1;
-%     end
     
 end
 counter1/counter2
+
+
 
 
 
