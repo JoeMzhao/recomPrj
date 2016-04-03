@@ -94,7 +94,7 @@ for i = 1:length(testSet)
            userUpool1 = pool(find(pool(:, 1) == uID), :);
         
       if inORnot(testSet(i, 4))
-               numIn = numIn + 1;
+               numIn  = numIn + 1;
                trainRateMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 3);          
                timeArry              = pool(:, 4);          
                [repIdx, threshArry2] = whichOut(timeArry, testSet(i, 4)); 
