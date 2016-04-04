@@ -27,7 +27,7 @@ maxIters     = 400;
 regular_u    = 0.1;
 regular_v    = 0.34;
 tolerence    = 1e-5; 
-T            = 15;
+T            = 0;
 alpha        = 1e-1;
 beta         = 1e-1;
 
@@ -54,6 +54,7 @@ MAE1
 curPred  = userMat' * moviMat;
 N        = 10;
 P10K     = 200;
+
 num5test = 0;
 numHits  = 0;
 
