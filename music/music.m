@@ -9,6 +9,7 @@ rawMat(:, 2) = rawMat(:, 2)./1000;
 rawMat(:, 2) = rawMat(:, 2) - min(rawMat(:, 2));
 rawMat(:, 3) = rawMat(:, 3) + 1;
 sorted       = sortrows(rawMat, 2);
+sorted       = sorted(1:end-1, :);
 dataLen      = size(sorted, 1);
 
 poption       = 0.8;
@@ -39,14 +40,15 @@ X  = zeros(numUser, f);
 
 YTY = Y' * Y; 
 for i = 1:numUser
-    C_up_u_user  = diag(confiMat(i, :));
+    C_up_u_user  = spdiags(confiMat(i, :)', 0, numTrack, numTrack);
     YT_C_Y  = YTY + Y'* (C_up_u_user - eye(numTrack)) * Y;
     X(i, :) = (YT_C_Y) \ Y' * C_up_u_user * prefeMat(i, :);
 end
 
 XTX = X' * X;
 for j = 1:numTrack
-    C_up_i_track = diag(confiMat(:, j));
+    C_up_i_track = diag(confiMat(:, j));  
+   % C_up_i_track = spdiags(confiMat(:, j), 0, numUser, numUser);
     XT_C_X  = XTX + X' * (C_up_i_track - eye(numUser)) * X;
     Y(j, :) = (XT_C_X) \ X' * C_up_i_track * prefeMat(:, j);
 end
