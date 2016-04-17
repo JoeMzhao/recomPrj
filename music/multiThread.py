@@ -1,6 +1,10 @@
+import csv
+import copy
 import numpy as np
 import scipy.sparse as sparse
+import scipy.linalg
 from scipy.sparse.linalg import spsolve
+from multiprocessing import Process, Queue
 import time
 
 def load_matrix(filename, num_users, num_items):
@@ -31,16 +35,18 @@ def load_matrix(filename, num_users, num_items):
     print 'Finished loading matrix in %f seconds' % (t1 - t0)
     return counts
 
+
 class ImplicitMF():
 
-    def __init__(self, counts, num_factors=10, num_iterations=5,
-                 reg_param=0.8):
+    def __init__(self, counts, num_factors=20, num_iterations=1,
+                 reg_param=0.8, num_threads=1):
         self.counts = counts
         self.num_users = counts.shape[0]
         self.num_items = counts.shape[1]
         self.num_factors = num_factors
         self.num_iterations = num_iterations
         self.reg_param = reg_param
+        self.num_threads = num_threads
 
     def train_model(self):
         self.user_vectors = np.random.normal(size=(self.num_users,
@@ -50,12 +56,18 @@ class ImplicitMF():
 
         for i in xrange(self.num_iterations):
             t0 = time.time()
+
+            user_vectors_old = copy.deepcopy(self.user_vectors)
+            item_vectors_old = copy.deepcopy(self.item_vectors)
+
             print 'Solving for user vectors...'
             self.user_vectors = self.iteration(True, sparse.csr_matrix(self.item_vectors))
             print 'Solving for item vectors...'
             self.item_vectors = self.iteration(False, sparse.csr_matrix(self.user_vectors))
             t1 = time.time()
             print 'iteration %i finished in %f seconds' % (i + 1, t1 - t0)
+            norm_diff = scipy.linalg.norm(user_vectors_old - self.user_vectors) + scipy.linalg.norm(item_vectors_old - self.item_vectors)
+            print 'norm difference:', norm_diff
 
         return self
 
@@ -63,12 +75,52 @@ class ImplicitMF():
         num_solve = self.num_users if user else self.num_items
         num_fixed = fixed_vecs.shape[0]
         YTY = fixed_vecs.T.dot(fixed_vecs)
-        eye = sparse.eye(num_fixed, num_fixed)
+        eye = sparse.eye(num_fixed)
         lambda_eye = self.reg_param * sparse.eye(self.num_factors)
         solve_vecs = np.zeros((num_solve, self.num_factors))
 
+        batch_size = int(np.ceil(num_solve * 1. / self.num_threads))
+        print 'batch_size per thread is: %d' % batch_size
+        idx = 0
+        processes = []
+        done_queue = Queue()
+        while idx < num_solve:
+            min_i = idx
+            max_i = min(idx + batch_size, num_solve)
+            p = Process(target=self.iteration_one_vec,
+                        args=(user, YTY, eye, lambda_eye, fixed_vecs, min_i, max_i, done_queue))
+            p.start()
+            processes.append(p)
+            idx += batch_size
+
+        cnt_vecs = 0
+        while True:
+            is_alive = False
+            for p in processes:
+                if p.is_alive():
+                    is_alive = True
+                    break
+            if not is_alive and done_queue.empty():
+                break
+            time.sleep(.1)
+            while not done_queue.empty():
+                res = done_queue.get()
+                i, xu = res
+                solve_vecs[i] = xu
+                cnt_vecs += 1
+        assert cnt_vecs == len(solve_vecs)
+
+        done_queue.close()
+        for p in processes:
+            p.join()
+
+        print 'All processes completed.'
+        return solve_vecs
+
+    def iteration_one_vec(self, user, YTY, eye, lambda_eye, fixed_vecs, min_i, max_i, output):
         t = time.time()
-        for i in xrange(num_solve):
+        cnt = 0
+        for i in xrange(min_i, max_i):
             if user:
                 counts_i = self.counts[i].toarray()
             else:
@@ -79,15 +131,20 @@ class ImplicitMF():
             YTCuIY = fixed_vecs.T.dot(CuI).dot(fixed_vecs)
             YTCupu = fixed_vecs.T.dot(CuI + eye).dot(sparse.csr_matrix(pu).T)
             xu = spsolve(YTY + YTCuIY + lambda_eye, YTCupu)
-            solve_vecs[i] = xu
-            if i % 1000 == 0:
-                print 'Solved %i vecs in %d seconds' % (i, time.time() - t)
-                t = time.time()
-
-        return solve_vecs
-
+            output.put((i, list(xu)))
+            cnt += 1
+            if cnt % 1000 == 0:
+                print 'Solved %d vecs in %d seconds (one thread)' % (cnt, time.time() - t)
+        output.close()
+        print 'Process done.'
 
 if __name__ == '__main__':
     counts = load_matrix('forPY2.csv', 756, 175606)
     m = ImplicitMF(counts)
     print m.train_model().item_vectors
+
+    with open('forPY2.csv','w') as f:
+        f_csv = csv.writer(f)
+        f_csv.writerows(m.train_model().item_vectors)
+        f_csv.writerows('\n\n\n')
+        f_csv.writerows(m.train_model().user_vectors)

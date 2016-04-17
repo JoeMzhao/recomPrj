@@ -9,7 +9,7 @@ def load_matrix(filename, num_users, num_items):
     total = 0.0
     num_zeros = num_users * num_items
     for i, line in enumerate(open(filename, 'r')):
-        user, item, count = line.strip().split(',')
+        user, item, count = line.strip().split('\t')
         user = int(user)
         item = int(item)
         count = float(count)
@@ -31,9 +31,10 @@ def load_matrix(filename, num_users, num_items):
     print 'Finished loading matrix in %f seconds' % (t1 - t0)
     return counts
 
+
 class ImplicitMF():
 
-    def __init__(self, counts, num_factors=10, num_iterations=5,
+    def __init__(self, counts, num_factors=40, num_iterations=30,
                  reg_param=0.8):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -57,13 +58,11 @@ class ImplicitMF():
             t1 = time.time()
             print 'iteration %i finished in %f seconds' % (i + 1, t1 - t0)
 
-        return self
-
     def iteration(self, user, fixed_vecs):
         num_solve = self.num_users if user else self.num_items
         num_fixed = fixed_vecs.shape[0]
         YTY = fixed_vecs.T.dot(fixed_vecs)
-        eye = sparse.eye(num_fixed, num_fixed)
+        eye = sparse.eye(num_fixed)
         lambda_eye = self.reg_param * sparse.eye(self.num_factors)
         solve_vecs = np.zeros((num_solve, self.num_factors))
 
@@ -86,8 +85,8 @@ class ImplicitMF():
 
         return solve_vecs
 
-
 if __name__ == '__main__':
-    counts = load_matrix('forPY2.csv', 756, 175606)
-    m = ImplicitMF(counts)
-    print m.train_model().item_vectors
+    in_path = "trimed.csv"
+    out_path = "parsed"
+    data = read_data(in_path)
+    groupby_data(data, out_path)
