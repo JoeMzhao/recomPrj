@@ -2,29 +2,34 @@ import numpy as np
 import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 import time
+import csv
+
+def load_Nby3(filename, numRows):
+    counts = np.zeros((numRows, 3))
+
 
 def load_matrix(filename, num_users, num_items):
     t0 = time.time()
     counts = np.zeros((num_users, num_items))
-    total = 0.0
+    total = 0.0 #number of none-zero entries
     num_zeros = num_users * num_items
     for i, line in enumerate(open(filename, 'r')):
-        user, item, count = line.strip().split(',')
+        user, timestamp, item = line.strip().split(',')
         user = int(user)
         item = int(item)
-        count = float(count)
+        timestamp = float(timestamp)
         if user >= num_users:
             continue
         if item >= num_items:
             continue
-        if count != 0:
-            counts[user, item] = count
-            total += count
-            num_zeros -= 1
-        if i % 100000 == 0:
-            print 'loaded %i counts...' % i
+        if item != 0:
+            counts[user, item] = counts[user, item] + 1
+            total += 1
+            num_zeros -= 1 #should not reduce 1 everytime, computed by hand
+        if i % 1000 == 0:
+            print 'loaded %i data points...' % i
     alpha = num_zeros / total
-    print 'alpha %.2f' % alpha
+    print 'alpha is %.2f' % alpha
     counts *= alpha
     counts = sparse.csr_matrix(counts)
     t1 = time.time()
@@ -33,7 +38,7 @@ def load_matrix(filename, num_users, num_items):
 
 class ImplicitMF():
 
-    def __init__(self, counts, num_factors=10, num_iterations=5,
+    def __init__(self, counts, num_factors=10, num_iterations=1,
                  reg_param=0.8):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -80,14 +85,30 @@ class ImplicitMF():
             YTCupu = fixed_vecs.T.dot(CuI + eye).dot(sparse.csr_matrix(pu).T)
             xu = spsolve(YTY + YTCuIY + lambda_eye, YTCupu)
             solve_vecs[i] = xu
-            if i % 1000 == 0:
-                print 'Solved %i vecs in %d seconds' % (i, time.time() - t)
-                t = time.time()
+            if i % 500 == 0:
+                 print 'Solved %i vecs in %d seconds' % (i, time.time() - t)
+            t = time.time()
 
         return solve_vecs
 
+# class perforEva():
+#     def __init__(self, curPred, testMat):
+#         self.
 
-if __name__ == '__main__':
-    counts = load_matrix('forPY2.csv', 756, 175606)
-    m = ImplicitMF(counts)
-    print m.train_model().item_vectors
+# if __name__ == '__main__':
+trainMat = load_matrix('music50k', 1000, 298837)
+testMat  = load_matrix('music50k-test!', 1000, 298837)
+
+m = ImplicitMF(trainMat)
+predVects = m.train_model()
+
+with open('user_item_vectors.csv','w') as f:
+    f_csv = csv.writer(f)
+    f_csv.writerows(predVects.user_vectors)
+    f_csv.writerows('\n\n\n')
+    f_csv.writerows(predVects.item_vectors)
+
+curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
+print curPred.shape
+
+N = 10 # top 10 tracks are recommended
