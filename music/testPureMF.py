@@ -3,10 +3,20 @@ import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 import time
 import csv
+import random
 
 def load_Nby3(filename, numRows):
     counts = np.zeros((numRows, 3))
-
+    for i, line in enumerate(open(filename, 'r')):
+        user, timestamp, item = line.strip().split(',')
+        user = int(user)
+        item = int(item)
+        timestamp = int(timestamp)
+        counts[i, 0] = user
+        counts[i, 1] = item
+        counts[i, 2] = timestamp
+    print 'finish loading test N by 3 matrix'
+    return counts
 
 def load_matrix(filename, num_users, num_items):
     t0 = time.time()
@@ -97,10 +107,12 @@ class ImplicitMF():
 
 # if __name__ == '__main__':
 trainMat = load_matrix('music50k', 1000, 298837)
-testMat  = load_matrix('music50k-test!', 1000, 298837)
+testMat  = load_Nby3('music50k-test!', 1000)
 
 m = ImplicitMF(trainMat)
 predVects = m.train_model()
+curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
+print curPred.shape
 
 with open('user_item_vectors.csv','w') as f:
     f_csv = csv.writer(f)
@@ -108,7 +120,38 @@ with open('user_item_vectors.csv','w') as f:
     f_csv.writerows('\n\n\n')
     f_csv.writerows(predVects.item_vectors)
 
-curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
-print curPred.shape
+with open('curPred.csv','w') as cur:
+    cur_csv = csv.writer(cur)
+    cur_csv.writerows(curPred)
 
-N = 10 # top 10 tracks are recommended
+
+N = 5 # top 10 tracks are recommended
+P10K = 100
+num4test = 0
+num4hit  = 0
+
+for i in range(0, testMat.shape[0]):
+    userID  = testMat[i, 0]
+    trackID = testMat[i, 1]
+    if trainMat[userID, trackID]:
+        num4test += 1
+    else:
+        continue
+
+    userVec   = trainMat[i]
+    notListen = np.where(userVec == 0)
+    sampled   = random.sample(notListen, 20)
+    oneKrate  = np.zeros((1, len(sampled)))
+    corresp   = curPred[userID, trackID]
+
+    for j in range(0, len(sample)):
+        itemIdx = sampled[j]
+        oneKrate[j] = curPre[i, itemIdx]
+
+    thre = np.where(oneKrate > corresp)
+
+    if len(thre) <= (N-1):
+        num4hit += 1
+
+print num4hit
+print num4test
