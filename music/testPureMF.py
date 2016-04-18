@@ -4,6 +4,7 @@ from scipy.sparse.linalg import spsolve
 import time
 import csv
 import random
+from pudb import set_trace; set_trace()
 
 def load_Nby3(filename, numRows):
     counts = np.zeros((numRows, 3))
@@ -106,8 +107,8 @@ class ImplicitMF():
 #         self.
 
 # if __name__ == '__main__':
-trainMat = load_matrix('music50k', 1000, 298837)
-testMat  = load_Nby3('music50k-test!', 1000)
+trainMat = load_matrix('music30k.csv', 1000, 298837)
+testMat  = load_Nby3('music30k-test!.csv',30000)
 
 m = ImplicitMF(trainMat)
 predVects = m.train_model()
@@ -140,7 +141,7 @@ for i in range(0, testMat.shape[0]):
 
     userVec   = trainMat[i]
     notListen = np.where(userVec == 0)
-    sampled   = random.sample(notListen, 20)
+    sampled   = random.sample(notListen[1], 20)
     oneKrate  = np.zeros((1, len(sampled)))
     corresp   = curPred[userID, trackID]
 
@@ -152,6 +153,8 @@ for i in range(0, testMat.shape[0]):
 
     if len(thre) <= (N-1):
         num4hit += 1
+    if i % 100 == 0:
+        print 'proccesed %i data points...' % i
 
 print num4hit
 print num4test
