@@ -4,7 +4,7 @@ from scipy.sparse.linalg import spsolve
 import time
 import csv
 import random
-from pudb import set_trace; set_trace()
+# from pudb import set_trace; set_trace()
 
 def load_Nby3(filename, numRows):
     counts = np.zeros((numRows, 3))
@@ -115,15 +115,15 @@ predVects = m.train_model()
 curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 print curPred.shape
 
-with open('user_item_vectors.csv','w') as f:
-    f_csv = csv.writer(f)
-    f_csv.writerows(predVects.user_vectors)
-    f_csv.writerows('\n\n\n')
-    f_csv.writerows(predVects.item_vectors)
-
-with open('curPred.csv','w') as cur:
-    cur_csv = csv.writer(cur)
-    cur_csv.writerows(curPred)
+# with open('user_item_vectors.csv','w') as f:
+#     f_csv = csv.writer(f)
+#     f_csv.writerows(predVects.user_vectors)
+#     f_csv.writerows('\n\n\n')
+#     f_csv.writerows(predVects.item_vectors)
+#
+# with open('curPred.csv','w') as cur:
+#     cur_csv = csv.writer(cur)
+#     cur_csv.writerows(curPred)
 
 
 N = 5 # top 10 tracks are recommended
@@ -141,7 +141,7 @@ for i in range(0, testMat.shape[0]):
 
     userVec   = trainMat[i]
     notListen = np.where(userVec == 0)
-    sampled   = random.sample(notListen[1], 20)
+    sampled   = random.sample(notListen[0], 20)
     oneKrate  = np.zeros((1, len(sampled)))
     corresp   = curPred[userID, trackID]
 
