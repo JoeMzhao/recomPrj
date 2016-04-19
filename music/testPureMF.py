@@ -106,55 +106,59 @@ class ImplicitMF():
 #     def __init__(self, curPred, testMat):
 #         self.
 
-# if __name__ == '__main__':
-trainMat = load_matrix('music30k.csv', 1000, 298837)
-testMat  = load_Nby3('music30k-test!.csv',30000)
+if __name__ == '__main__':
+    trainMat = load_matrix('music30k.csv', 1001, 298837)
+    testMat = load_Nby3('music30k-test!.csv',2000)
 
-m = ImplicitMF(trainMat)
-predVects = m.train_model()
-curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
-print curPred.shape
+    m = ImplicitMF(trainMat)
+    predVects = m.train_model()
+    curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
+    print curPred.shape
 
-# with open('user_item_vectors.csv','w') as f:
-#     f_csv = csv.writer(f)
-#     f_csv.writerows(predVects.user_vectors)
-#     f_csv.writerows('\n\n\n')
-#     f_csv.writerows(predVects.item_vectors)
-#
-# with open('curPred.csv','w') as cur:
-#     cur_csv = csv.writer(cur)
-#     cur_csv.writerows(curPred)
+    # with open('user_item_vectors.csv','w') as f:
+    #     f_csv = csv.writer(f)
+    #     f_csv.writerows(predVects.user_vectors)
+    #     f_csv.writerows('\n\n\n')
+    #     f_csv.writerows(predVects.item_vectors)
+    #
+    # with open('curPred.csv','w') as cur:
+    #     cur_csv = csv.writer(cur)
+    #     cur_csv.writerows(curPred)
 
+    print testMat.shape
+    print testMat[1, 0]
+    print testMat[1, 1]
 
-N = 5 # top 10 tracks are recommended
-P10K = 100
-num4test = 0
-num4hit  = 0
+    N = 5 # top N tracks are recommended
+    P10K = 20
+    num4test = 0
+    num4hit  = 0
 
-for i in range(0, testMat.shape[0]):
-    userID  = testMat[i, 0]
-    trackID = testMat[i, 1]
-    if trainMat[userID, trackID]:
-        num4test += 1
-    else:
-        continue
+    for i in range(0, testMat.shape[0]):
+        userID  = testMat[i, 0]
+        trackID = testMat[i, 1]
+        if trainMat[userID, trackID]:
+            num4test += 1
+        else:
+            continue
 
-    userVec   = trainMat[i]
-    notListen = np.where(userVec == 0)
-    sampled   = random.sample(notListen[0], 20)
-    oneKrate  = np.zeros((1, len(sampled)))
-    corresp   = curPred[userID, trackID]
+        userVec = trainMat[userID]
+        rowVec = userVec[0].todense()
+        notListen = np.where(rowVec[0] == 0)[1]
+        sampled = random.sample(notListen, 20)
+        oneKrate = np.zeros((1, len(sampled)))
 
-    for j in range(0, len(sample)):
-        itemIdx = sampled[j]
-        oneKrate[j] = curPre[i, itemIdx]
+        for j in range(0, len(sampled)):
+            itemIdx = sampled[j]
+            oneKrate[0, j] = curPred[userID-1, itemIdx]
 
-    thre = np.where(oneKrate > corresp)
+        corresp = curPred[userID-1, trackID]
+        thre = np.where(oneKrate > corresp)
 
-    if len(thre) <= (N-1):
-        num4hit += 1
-    if i % 100 == 0:
-        print 'proccesed %i data points...' % i
+        if len(thre) <= (N-1):
+            num4hit += 1
+        if i % 100 == 0:
+            print 'proccesed %i data points...' % i
 
-print num4hit
-print num4test
+    print num4hit
+    print num4test
