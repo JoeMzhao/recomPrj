@@ -131,9 +131,14 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
         poolFreqMat[0, userPool1[i, 1]] += 1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.2 * np.mean(curPred[userID, :])):
+        if (poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.5 * np.mean(curPred[userID, :])):
             posiTrackIdx = np.vstack([posiTrackIdx, j])
-        elif:
+        elif (poolFreqMat[0, j] < 1) and (curPred[userID, j] < 0.5 * np.mean(curPred[userID, :])):
+            posiTrackIdx = np.vstack([posiTrackIdx, j])
+        else:
+            continue
+    return posiTrackIdx
+
 
 
 
