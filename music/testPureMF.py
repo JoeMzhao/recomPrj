@@ -129,15 +129,15 @@ if __name__ == '__main__':
     print testMat[1, 0]
     print testMat[1, 1]
 
-    N = 5 # top N tracks are recommended
-    P10K = 20
+    N = 10 # top N tracks are recommended
+    P10K = 2000
     num4test = 0
     num4hit  = 0
 
     for i in range(0, testMat.shape[0]):
         userID  = testMat[i, 0]
         trackID = testMat[i, 1]
-        if trainMat[userID, trackID]:
+        if trainMat[userID, trackID]>0:
             num4test += 1
         else:
             continue
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         userVec = trainMat[userID]
         rowVec = userVec[0].todense()
         notListen = np.where(rowVec[0] == 0)[1]
-        sampled = random.sample(notListen, 20)
+        sampled = random.sample(notListen, P10K)
         oneKrate = np.zeros((1, len(sampled)))
 
         for j in range(0, len(sampled)):
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         corresp = curPred[userID-1, trackID]
         thre = np.where(oneKrate > corresp)
 
-        if len(thre) <= (N-1):
+        if len(thre[1]) <= (N-1):
             num4hit += 1
         if i % 100 == 0:
             print 'proccesed %i data points...' % i

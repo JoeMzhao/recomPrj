@@ -61,8 +61,8 @@ num4hit  = 0
 for i in range(0, testMat.shape[0]):
 	userID  = testMat[i, 0]
 	trackID = testMat[i, 1]
-	if trainMat[userID, trackID]:
-	    num4test += 1
+	if trainMat[userID, trackID]>0:
+		num4test += 1
 	else:
 	    continue
 	userVec = trainMat[userID+1]
@@ -70,18 +70,24 @@ for i in range(0, testMat.shape[0]):
 	notListen = np.where(rowVec[0] == 0)[1]
 	sampled = random.sample(notListen, 20)
 	oneKrate = np.zeros((1, len(sampled)))
+
 	for j in range(0, len(sampled)):
 		itemIdx = sampled[j]
 		oneKrate[0, j] = curPred[userID-1, itemIdx]
 
-		corresp = curPred[userID, trackID]
-		thre = np.where(oneKrate > corresp)
+	corresp = curPred[userID-1, trackID]
+	thre = np.where(oneKrate > corresp)
 
-		if len(thre) <= (N-1):
-			num4hit += 1
-		if i % 100 == 0:
-			print 'proccesed %i data points...' % i
+	print oneKrate[0]
+	print corresp
+	print thre
 
+	if len(thre[1]) <= (N-1):
+		num4hit += 1
+#		if i % 100 == 0:
+#			print 'proccesed %i data points...' % i
+print num4hit
+print num4test
 
 # print trainMat
 # print trainMat[1000]
