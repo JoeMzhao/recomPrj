@@ -128,7 +128,7 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
     poolFreqMat = np.zeros((1, numTrack))
 
     for i in range (0, userUpool1.shape[0]):
-        poolFreqMat[0, userPool1[i, 1]] += 1
+        poolFreqMat[0, userUpool1[i, 1]] += 1
 
     for j in range (0, numTrack):
         if (poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.5 * np.mean(curPred[userID, :])):
@@ -138,6 +138,26 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
         else:
             continue
     return posiTrackIdx
+
+def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack):
+    userID = newComep[0]
+    negaTrackIdx = []
+    userUpool2 = np.vstack([userUpool2, newCome])
+    poolFreqMat = np.zeros((1, numTrack))
+
+    for i in range (0, userUpool2.shape[0]):
+        poolFreqMat[0, userUpool2[i, 1]] += 1
+
+    poolFreqMat[userID, SPuIdx] = -1
+
+    for j in range (0, numTrack):
+        if (poolFreqMat[0, j] == 0) and (curPred[userID, j] > 1.5 * np.mean(curPred[userID, :])):
+            negaTrackIdx = np.vstack([negaTrackIdx, j])
+        elif (poolFreqMat[0, j] >= 1) and (curPred[userID, j] < 0.5 * np.mean(curPred[userID, :])):
+            negaTrackIdx = np.vstack([negaTrackIdx, j])
+        else:
+            continue
+    return negaTrackIdx
 
 
 
@@ -207,6 +227,8 @@ if __name__ == '__main__':
     numComing = 0
     numUser = 1000
     numTrack = 298837
+    T = 3
+    M = 20
 
     for i in range(0, testMat.shape[0]):
         userID = testMat[i, 0]
@@ -227,6 +249,58 @@ if __name__ == '__main__':
 
             SPuIdx = SamplePositiveInput(curPred, userPool1, testMat[i, :],
                                                              numUser, numTrack)
+            SNuIdx = SampleNegativeInput(curPred, userPool2, SPuIdx, testMat[i, :],
+                                                             numUser, numTrack)
+
+            for round in range (0, T):
+                for ii in range (0, len(SPuIdx)):
+                    countHat = trainMat[userID, SPuIdx[ii]]
+                    countAvg = np.mean(trainMat[userid, SNuIdx[:]])
+
+                    if not SNuIdx:
+                        negaAvg = np.zeros((M, 1))
+                    else:
+                        idx = SNuIdx[:]
+                        negaSum = np.sum(predVects.item_vectors[idx, :], axis = 0)
+                        negaAvg = negaSum/len(snUiDX)
+
+                    predVects.user_vectors[userID, :] += alpha * ita *\
+                                        (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) -\
+                                        alpha * beta * predVects.user_vectors[userID, :]
+                    predVects.item_vectors[SPuIdx[ii]] += alpha * ita * predVects.user_vectors[userID, :] -\
+                                        alpha * beta * predVects.item_vectors[SPuIdx(ii), :]
+
+                    for j in range(0, len(SNuIdx)):
+                        negaIdx = SNuIdx[j]
+                        predVects.item_vectors[negaIdx, :] = predVects.item_vectors[negaIdx, :] -\
+                                        alpha * ita * predVects.user_vectors[userID, :] -\
+                                        alpha * beta * predVects.item_vectors[negaIdx, :]
+
+        curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
+
+        if trainMat[userID, trackID]>0:
+            counter1 += 1
+            userVec = trainMat[userID]
+            rowVec = userVec[0].todense()
+            notListen = np.where(rowVec[0] == 0)[1]
+            sampled = random.sample(notListen, P10K)
+            oneKrate = np.zeros((1, len(sampled)))
+
+            for j in range(0, len(sampled)):
+                itemIdx = sampled[j]
+                oneKrate[0, j] = curPred[userID-1, itemIdx]
+
+            corresp = curPred[userID-1, trackID]
+            thre = np.where(oneKrate > corresp)
+
+            if len(thre[1]) <= (N-1):
+                counter2 += 1
+            if i % 100 == 0:
+                print 'proccesed %i data points...' % i
+
+    print counter1
+    print counter2
+
 
 
 
