@@ -6,6 +6,10 @@ import csv
 import random
 import math
 # from pudb import set_trace; set_trace()
+import warnings
+
+def fxn():
+    warnings.warn("deprecated", DeprecationWarning)
 
 def load_Nby3(filename, numRows):
     counts = np.zeros((numRows, 3))
@@ -50,7 +54,7 @@ def load_matrix(filename, num_users, num_items):
 
 class ImplicitMF():
 
-    def __init__(self, counts, alpha, num_factors=10, num_iterations=2,
+    def __init__(self, counts, alpha, num_factors=10, num_iterations=1,
                  reg_param=0.8):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -106,8 +110,10 @@ class ImplicitMF():
 
 def inOrnot(timestamp, poolSize):
     bound = 1 - poolSize/timestamp
-    buff  = random.random
+    buff  = random.random()
+    print buff
     if buff < bound:
+        print 'In!'
         return 1
     else:
         return 0
@@ -122,7 +128,7 @@ def whichOut(timeArry, timestamp):
     return index
 
 def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
-    userID = newComep[0]
+    userID = newCome[0]
     posiTrackIdx = []
     userUpool1 = np.vstack([userUpool1, newCome])
     poolFreqMat = np.zeros((1, numTrack))
@@ -131,16 +137,16 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
         poolFreqMat[0, userUpool1[i, 1]] += 1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.5 * np.mean(curPred[userID, :])):
-            posiTrackIdx = np.vstack([posiTrackIdx, j])
-        elif (poolFreqMat[0, j] < 1) and (curPred[userID, j] < 0.5 * np.mean(curPred[userID, :])):
-            posiTrackIdx = np.vstack([posiTrackIdx, j])
+        if (poolFreqMat[0, j] >= 3) and (curPred[userID, j] > np.mean(curPred[userID, :])):
+            posiTrackIdx = posiTrackIdx = posiTrackIdx + [j]
+        elif (poolFreqMat[0, j] < 3 and poolFreqMat[0, j] > 1) and (curPred[userID, j] < np.mean(curPred[userID, :])):
+            posiTrackIdx = posiTrackIdx + [j]
         else:
             continue
     return posiTrackIdx
 
 def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack):
-    userID = newComep[0]
+    userID = newCome[0]
     negaTrackIdx = []
     userUpool2 = np.vstack([userUpool2, newCome])
     poolFreqMat = np.zeros((1, numTrack))
@@ -148,13 +154,13 @@ def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack)
     for i in range (0, userUpool2.shape[0]):
         poolFreqMat[0, userUpool2[i, 1]] += 1
 
-    poolFreqMat[userID, SPuIdx] = -1
+    poolFreqMat[0, SPuIdx] = -1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] == 0) and (curPred[userID, j] > 1.5 * np.mean(curPred[userID, :])):
-            negaTrackIdx = np.vstack([negaTrackIdx, j])
-        elif (poolFreqMat[0, j] >= 1) and (curPred[userID, j] < 0.5 * np.mean(curPred[userID, :])):
-            negaTrackIdx = np.vstack([negaTrackIdx, j])
+        if (poolFreqMat[0, j] < 3 and poolFreqMat[0, j] > 1) and (curPred[userID, j] > np.mean(curPred[userID, :])):
+            negaTrackIdx = negaTrackIdx + [j]
+        elif (poolFreqMat[0, j] >= 3) and (curPred[userID, j] < np.mean(curPred[userID, :])):
+            negaTrackIdx = negaTrackIdx + [j]
         else:
             continue
     return negaTrackIdx
@@ -168,25 +174,19 @@ class testInitial():
 # ------------------------------------------------------
 
 if __name__ == '__main__':
-    (trainMat, alpha) = load_matrix('music30k.csv', 1001, 298837)
-    testMat = load_Nby3('10kfortest.csv',2000)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fxn()
+
+    (trainMat, alphaTrain) = load_matrix('music30k.csv', 1001, 298837)
+    testMat = load_Nby3('10kfortest.csv',500)
 
     predVects = testInitial()
-
-    # m = ImplicitMF(trainMat, alpha)
+    # m = ImplicitMF(trainMat, alphaTrain)
     # predVects = m.train_model()
     curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
     print curPred.shape
-
-    # with open('user_item_vectors.csv','w') as f:
-    #     f_csv = csv.writer(f)
-    #     f_csv.writerows(predVects.user_vectors)
-    #     f_csv.writerows('\n\n\n')
-    #     f_csv.writerows(predVects.item_vectors)
-    #
-    # with open('curPred.csv','w') as cur:
-    #     cur_csv = csv.writer(cur)
-    #     cur_csv.writerows(curPred)
 
     N = 10 # top N tracks are recommended
     P10K = 10000
@@ -231,6 +231,8 @@ if __name__ == '__main__':
     numTrack = 298837
     T = 3
     M = 20
+    alpha = 0.1
+    beta = 0.1
 
     for i in range(0, testMat.shape[0]):
         print i
@@ -257,27 +259,32 @@ if __name__ == '__main__':
 
             for round in range (0, T):
                 for ii in range (0, len(SPuIdx)):
+                    print ii
                     countHat = trainMat[userID, SPuIdx[ii]]
-                    countAvg = np.mean(trainMat[userid, SNuIdx[:]])
-
+                    buffArray = trainMat[userID, SNuIdx[:]]
+                    countAvg = np.mean(buffArray.todense())
+                    ita = max(0, countHat - countAvg)
                     if not SNuIdx:
                         negaAvg = np.zeros((M, 1))
                     else:
                         idx = SNuIdx[:]
                         negaSum = np.sum(predVects.item_vectors[idx, :], axis = 0)
-                        negaAvg = negaSum/len(snUiDX)
+                        negaAvg = negaSum/len(SNuIdx)
+                        
+                    print negaSum
+                    print predVects.item_vectors[SPuIdx[ii], :]
+                    print alpha * beta * predVects.user_vectors[userID, :]
+                    print alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg)
+                    print SPuIdx[ii]
+                    print predVects.item_vectors[SPuIdx[ii], :]
+                    print predVects.item_vectors[SPuIdx[ii], :] - negaAvg
 
-                    predVects.user_vectors[userID, :] += alpha * ita *\
-                                        (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) -\
-                                        alpha * beta * predVects.user_vectors[userID, :]
-                    predVects.item_vectors[SPuIdx[ii]] += alpha * ita * predVects.user_vectors[userID, :] -\
-                                        alpha * beta * predVects.item_vectors[SPuIdx(ii), :]
+                    predVects.user_vectors[userID, :] += alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) - alpha * beta * predVects.user_vectors[userID, :]
+                    predVects.item_vectors[SPuIdx[ii], :] += alpha * ita * predVects.user_vectors[userID, :] - alpha * beta * predVects.item_vectors[SPuIdx[ii], :]
 
                     for j in range(0, len(SNuIdx)):
                         negaIdx = SNuIdx[j]
-                        predVects.item_vectors[negaIdx, :] = predVects.item_vectors[negaIdx, :] -\
-                                        alpha * ita * predVects.user_vectors[userID, :] -\
-                                        alpha * beta * predVects.item_vectors[negaIdx, :]
+                        predVects.item_vectors[negaIdx, :] = predVects.item_vectors[negaIdx, :] - alpha * ita * predVects.user_vectors[userID, :] - alpha * beta * predVects.item_vectors[negaIdx, :]
 
         curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 
@@ -301,8 +308,9 @@ if __name__ == '__main__':
             if i % 100 == 0:
                 print 'proccesed %i data points...' % i
 
-    print counter1
     print counter2
+    print counter1
+    print numComing
 
 
 
