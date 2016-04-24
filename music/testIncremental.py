@@ -6,10 +6,8 @@ import csv
 import random
 import math
 # from pudb import set_trace; set_trace()
-import warnings
+import copy
 
-def fxn():
-    warnings.warn("deprecated", DeprecationWarning)
 
 def load_Nby3(filename, numRows):
     counts = np.zeros((numRows, 3))
@@ -41,7 +39,7 @@ def load_matrix(filename, num_users, num_items):
         if item != 0:
             counts[user, item] = counts[user, item] + 1
             total += 1
-            num_zeros -= 1 #should not reduce 1 everytime, computed by hand
+            num_zeros -= 1
         if i % 1000 == 0:
             print 'loaded %i data points...' % i
     alpha = num_zeros / total
@@ -111,7 +109,7 @@ class ImplicitMF():
 def inOrnot(timestamp, poolSize):
     bound = 1 - poolSize/timestamp
     buff  = random.random()
-    print buff
+    print bound
     if buff < bound:
         print 'In!'
         return 1
@@ -167,26 +165,21 @@ def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack)
 
 class testInitial():
     def __init__(self):
-        self.user_vectors = np.random.rand(1000, 20)
-        self.item_vectors = np.random.rand(298837, 20)
+        self.user_vectors = np.random.rand(1000, 10)
+        self.item_vectors = np.random.rand(298837, 10)
 
 
 # ------------------------------------------------------
 
 if __name__ == '__main__':
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        fxn()
-
     (trainMat, alphaTrain) = load_matrix('music30k.csv', 1001, 298837)
     testMat = load_Nby3('10kfortest.csv',500)
-
+    auxilaryTrainMat = copy.copy(trainMat)
     predVects = testInitial()
     # m = ImplicitMF(trainMat, alphaTrain)
     # predVects = m.train_model()
     curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
-    print curPred.shape
 
     N = 10 # top N tracks are recommended
     P10K = 10000
@@ -196,7 +189,7 @@ if __name__ == '__main__':
     for i in range(0, testMat.shape[0]):
         userID  = testMat[i, 0]
         trackID = testMat[i, 1]
-        if trainMat[userID, trackID]>0:
+        if trainMat[userID, trackID]>=3:
             num4test += 1
         else:
             continue
@@ -229,10 +222,11 @@ if __name__ == '__main__':
     numComing = 0
     numUser = 1000
     numTrack = 298837
-    T = 3
-    M = 20
-    alpha = 0.1
-    beta = 0.1
+    T = 10
+    M = 10
+    alpha = 10
+    beta = 10
+
 
     for i in range(0, testMat.shape[0]):
         print i
@@ -259,28 +253,23 @@ if __name__ == '__main__':
 
             for round in range (0, T):
                 for ii in range (0, len(SPuIdx)):
-                    print ii
                     countHat = trainMat[userID, SPuIdx[ii]]
                     buffArray = trainMat[userID, SNuIdx[:]]
                     countAvg = np.mean(buffArray.todense())
                     ita = max(0, countHat - countAvg)
                     if not SNuIdx:
-                        negaAvg = np.zeros((M, 1))
+                        negaAvg = np.zeros((1, M))
                     else:
                         idx = SNuIdx[:]
                         negaSum = np.sum(predVects.item_vectors[idx, :], axis = 0)
-                        negaAvg = negaSum/len(SNuIdx)
-                        
-                    print negaSum
-                    print predVects.item_vectors[SPuIdx[ii], :]
-                    print alpha * beta * predVects.user_vectors[userID, :]
-                    print alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg)
-                    print SPuIdx[ii]
-                    print predVects.item_vectors[SPuIdx[ii], :]
-                    print predVects.item_vectors[SPuIdx[ii], :] - negaAvg
+                        negaAvg = negaSum/len(idx)
 
-                    predVects.user_vectors[userID, :] += alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) - alpha * beta * predVects.user_vectors[userID, :]
-                    predVects.item_vectors[SPuIdx[ii], :] += alpha * ita * predVects.user_vectors[userID, :] - alpha * beta * predVects.item_vectors[SPuIdx[ii], :]
+                    # print predVects.item_vectors[SPuIdx[ii], :]
+                    # print alpha * beta * predVects.user_vectors[userID, :]
+                    # print alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg)
+
+                    predVects.user_vectors[userID, :] += (alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) - alpha * beta * predVects.user_vectors[userID, :]).reshape(M, )
+                    predVects.item_vectors[SPuIdx[ii], :] += (alpha * ita * predVects.user_vectors[userID, :] - alpha * beta * predVects.item_vectors[SPuIdx[ii], :]).reshape(M, )
 
                     for j in range(0, len(SNuIdx)):
                         negaIdx = SNuIdx[j]
@@ -288,7 +277,7 @@ if __name__ == '__main__':
 
         curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 
-        if trainMat[userID, trackID]>0:
+        if auxilaryTrainMat[userID, trackID]>=3:
             counter1 += 1
             userVec = trainMat[userID]
             rowVec = userVec[0].todense()
@@ -308,16 +297,14 @@ if __name__ == '__main__':
             if i % 100 == 0:
                 print 'proccesed %i data points...' % i
 
+    print '------- incremental results ------------'
     print counter2
     print counter1
+    print '------- non-incremental results --------'
+    print num4hit
+    print num4test
+    print '------- number of incoming -------------'
     print numComing
-
-
-
-
-
-
-
 
 
 
