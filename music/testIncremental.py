@@ -5,7 +5,7 @@ import time
 import csv
 import random
 import math
-# from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 import copy
 
 
@@ -107,9 +107,8 @@ class ImplicitMF():
         return solve_vecs
 
 def inOrnot(timestamp, poolSize):
-    bound = 1 - poolSize/timestamp
+    bound = 1 - poolSize * 0.9 /timestamp
     buff  = random.random()
-    print bound
     if buff < bound:
         print 'In!'
         return 1
@@ -135,9 +134,9 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
         poolFreqMat[0, userUpool1[i, 1]] += 1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] >= 3) and (curPred[userID, j] > 1.2*np.mean(curPred[userID, :])):
+        if (poolFreqMat[0, j] >= 2) and (curPred[userID, j] > 1.1*np.mean(curPred[userID, :])):
             posiTrackIdx = posiTrackIdx = posiTrackIdx + [j]
-        elif (poolFreqMat[0, j] < 3 and poolFreqMat[0, j] > 1) and (curPred[userID, j] < 0.8*np.mean(curPred[userID, :])):
+        elif (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] < 0.9*np.mean(curPred[userID, :])):
             posiTrackIdx = posiTrackIdx + [j]
         else:
             continue
@@ -155,9 +154,9 @@ def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack)
     poolFreqMat[0, SPuIdx] = -1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] < 3 and poolFreqMat[0, j] > 1) and (curPred[userID, j] > 1.2*np.mean(curPred[userID, :])):
+        if (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.1*np.mean(curPred[userID, :])):
             negaTrackIdx = negaTrackIdx + [j]
-        elif (poolFreqMat[0, j] >= 3) and (curPred[userID, j] < 0.8*np.mean(curPred[userID, :])):
+        elif (poolFreqMat[0, j] >= 2) and (curPred[userID, j] < 0.9*np.mean(curPred[userID, :])):
             negaTrackIdx = negaTrackIdx + [j]
         else:
             continue
@@ -173,12 +172,12 @@ class testInitial():
 
 if __name__ == '__main__':
 
-    (trainMat, alphaTrain) = load_matrix('music30k.csv', 1001, 298837)
-    testMat = load_Nby3('10kfortest.csv',500)
+    (trainMat, alphaTrain) = load_matrix('fullTrainSet.csv', 1001, 298837)
+    testMat = load_Nby3('partialTestSet.csv', 2000)
     auxilaryTrainMat = copy.copy(trainMat)
-    # predVects = testInitial()
-    m = ImplicitMF(trainMat, 1)
-    predVects = m.train_model()
+    predVects = testInitial()
+    # m = ImplicitMF(trainMat, 10)
+    # predVects = m.train_model()
     curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 
     N = 10 # top N tracks are recommended
@@ -189,7 +188,7 @@ if __name__ == '__main__':
     for i in range(0, testMat.shape[0]):
         userID  = testMat[i, 0]
         trackID = testMat[i, 1]
-        if trainMat[userID, trackID]>=1:
+        if trainMat[userID, trackID]>3:
             num4test += 1
         else:
             continue
@@ -215,10 +214,10 @@ if __name__ == '__main__':
     print num4hit
     print num4test
 # ------ the incremental section --------------------------
-    trainSet = load_Nby3('music30k.csv', 30000)
+    poolSize = 1230817
+    trainSet = load_Nby3('fullTrainSet.csv', poolSize)
     counter1 = 0
     counter2 = 0
-    poolSize = 30000
     numComing = 0
     numUser = 1000
     numTrack = 298837
@@ -226,6 +225,7 @@ if __name__ == '__main__':
     M = 10
     alpha = 1
     beta = 1
+    numofZeros = 0
 
 
     for i in range(0, testMat.shape[0]):
@@ -251,6 +251,9 @@ if __name__ == '__main__':
             SNuIdx = SampleNegativeInput(curPred, userPool2, SPuIdx, testMat[i, :],
                                                              numUser, numTrack)
 
+            if len(SPuIdx) == 0:
+                print 'In! but the length is 0!!!'
+                numofZeros += 1;
             for round in range (0, T):
                 for ii in range (0, len(SPuIdx)):
                     countHat = trainMat[userID, SPuIdx[ii]]
@@ -266,13 +269,13 @@ if __name__ == '__main__':
                         negaAvg = negaSum/len(idx)
 
 
-                    print predVects.user_vectors[userID, :]
+                    # print predVects.user_vectors[userID, :]
 
                     # print alpha * beta * predVects.user_vectors[userID, :]
                     # print alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg)
 
                     predVects.user_vectors[userID, :] += (alpha * ita * (predVects.item_vectors[SPuIdx[ii], :] - negaAvg) - alpha * beta * predVects.user_vectors[userID, :]).reshape(M, )
-                    print predVects.user_vectors[userID, :]
+                    # print predVects.user_vectors[userID, :]
 
                     predVects.item_vectors[SPuIdx[ii], :] += (alpha * ita * predVects.user_vectors[userID, :] - alpha * beta * predVects.item_vectors[SPuIdx[ii], :]).reshape(M, )
 
@@ -282,7 +285,7 @@ if __name__ == '__main__':
 
         curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 
-        if auxilaryTrainMat[userID, trackID]>=1:
+        if auxilaryTrainMat[userID, trackID]>3:
             counter1 += 1
             userVec = trainMat[userID]
             rowVec = userVec[0].todense()
@@ -307,6 +310,8 @@ if __name__ == '__main__':
     print num4hit
     print num4test
     print '------- number of incoming -------------'
+    print numComing
+    print '------- number incoming but 0 length ---'
     print numComing
     print '------- parameters ---------------------'
     print 'T is %d, alpha and beta are %f' % (T, alpha)
