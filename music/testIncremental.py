@@ -134,9 +134,9 @@ def SamplePositiveInput(curPred, userUpool1, newCome, numUser, numTrack):
         poolFreqMat[0, userUpool1[i, 1]] += 1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] >= 2) and (curPred[userID, j] > np.mean(curPred[userID, :])):
+        if (poolFreqMat[0, j] >= 2) and (curPred[userID, j] > 1.1*np.mean(curPred[userID, :])):
             posiTrackIdx = posiTrackIdx = posiTrackIdx + [j]
-        elif (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] < np.mean(curPred[userID, :])):
+        elif (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] < 0.9*np.mean(curPred[userID, :])):
             posiTrackIdx = posiTrackIdx + [j]
         else:
             continue
@@ -154,9 +154,9 @@ def SampleNegativeInput(curPred, userUpool2, SPuIdx, newCome, numUser, numTrack)
     poolFreqMat[0, SPuIdx] = -1
 
     for j in range (0, numTrack):
-        if (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] > np.mean(curPred[userID, :])):
+        if (poolFreqMat[0, j] < 2 and poolFreqMat[0, j] >= 1) and (curPred[userID, j] > 1.1*np.mean(curPred[userID, :])):
             negaTrackIdx = negaTrackIdx + [j]
-        elif (poolFreqMat[0, j] >= 2) and (curPred[userID, j] < np.mean(curPred[userID, :])):
+        elif (poolFreqMat[0, j] >= 2) and (curPred[userID, j] < 0.9*np.mean(curPred[userID, :])):
             negaTrackIdx = negaTrackIdx + [j]
         else:
             continue
@@ -172,12 +172,12 @@ class testInitial():
 
 if __name__ == '__main__':
 
-    (trainMat, alphaTrain) = load_matrix('music30k.csv', 1001, 298837)
-    testMat = load_Nby3('10kfortest.csv', 500)
+    (trainMat, alphaTrain) = load_matrix('fullTrainSet.csv', 1001, 298837)
+    testMat = load_Nby3('partialTestSet.csv', 2000)
     auxilaryTrainMat = copy.copy(trainMat)
-    predVects = testInitial()
-    # m = ImplicitMF(trainMat, 10)
-    # predVects = m.train_model()
+    # predVects = testInitial()
+    m = ImplicitMF(trainMat, 10)
+    predVects = m.train_model()
     curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
 
     N = 10 # top N tracks are recommended
@@ -196,7 +196,6 @@ if __name__ == '__main__':
         userVec = trainMat[userID]
         rowVec = userVec[0].todense()
         notListen = np.where(rowVec[0] == 0)[1]
-
         sampled = random.sample(notListen, P10K)
         oneKrate = np.zeros((1, len(sampled)))
 
@@ -215,14 +214,14 @@ if __name__ == '__main__':
     print num4hit
     print num4test
 # ------ the incremental section --------------------------
-    poolSize = 30000#1230817
-    trainSet = load_Nby3('music30k.csv', poolSize)
+    poolSize = 1230817
+    trainSet = load_Nby3('fullTrainSet.csv', poolSize)
     counter1 = 0
     counter2 = 0
     numComing = 0
     numUser = 1000
     numTrack = 298837
-    T = 3
+    T = 5
     M = 10
     alpha = 3
     beta = 3
@@ -300,6 +299,7 @@ if __name__ == '__main__':
 
             corresp = curPred[userID-1, trackID]
             thre = np.where(oneKrate > corresp)
+
             if len(thre[1]) <= (N-1):
                 counter2 += 1
 
