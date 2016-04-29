@@ -1,6 +1,6 @@
 clear; close all; clc
 
-fid     = fopen('forPY.csv');
+fid     = fopen('parsed');
 rawData = textscan(fid, '%d64 %d64 %d64', 'delimiter',',');
 fclose(fid);
 

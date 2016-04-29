@@ -6,6 +6,20 @@ import scipy.linalg
 from scipy.sparse.linalg import spsolve
 from multiprocessing import Process, Queue
 import time
+import random
+
+def load_Nby3(filename, numRows):
+    counts = np.zeros((numRows, 3))
+    for i, line in enumerate(open(filename, 'r')):
+        user, timestamp, item = line.strip().split(',')
+        user = int(user)
+        item = int(item)
+        timestamp = int(timestamp)
+        counts[i, 0] = user
+        counts[i, 1] = item
+        counts[i, 2] = timestamp
+    print 'finish loading test N by 3 matrix'
+    return counts
 
 def load_matrix(filename, num_users, num_items):
     t0 = time.time()
@@ -13,32 +27,32 @@ def load_matrix(filename, num_users, num_items):
     total = 0.0
     num_zeros = num_users * num_items
     for i, line in enumerate(open(filename, 'r')):
-        user, item, count = line.strip().split(',')
+        user, timestamp, item = line.strip().split(',')
         user = int(user)
         item = int(item)
-        count = float(count)
+        timestamp = int(timestamp)
         if user >= num_users:
             continue
         if item >= num_items:
             continue
-        if count != 0:
-            counts[user, item] = count
-            total += count
+        if item != 0:
+            counts[user, item] = counts[user, item] + 1
+            total += 1
             num_zeros -= 1
-        if i % 100000 == 0:
+        if i % 1000 == 0:
             print 'loaded %i counts...' % i
     alpha = num_zeros / total
     print 'alpha %.2f' % alpha
-    counts *= alpha
+    # counts *= alpha
     counts = sparse.csr_matrix(counts)
     t1 = time.time()
     print 'Finished loading matrix in %f seconds' % (t1 - t0)
-    return counts
+    return (counts, alpha)
 
 
 class ImplicitMF():
 
-    def __init__(self, counts, num_factors=20, num_iterations=1,
+    def __init__(self, counts, alpha, num_factors=10, num_iterations=5,
                  reg_param=0.8, num_threads=1):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -47,11 +61,12 @@ class ImplicitMF():
         self.num_iterations = num_iterations
         self.reg_param = reg_param
         self.num_threads = num_threads
+        self.alpha = alpha
 
     def train_model(self):
-        self.user_vectors = np.random.normal(size=(self.num_users,
+        self.user_vectors = self.alpha * np.random.normal(size=(self.num_users,
                                                    self.num_factors))
-        self.item_vectors = np.random.normal(size=(self.num_items,
+        self.item_vectors = self.alpha * np.random.normal(size=(self.num_items,
                                                    self.num_factors))
 
         for i in xrange(self.num_iterations):
@@ -139,12 +154,54 @@ class ImplicitMF():
         print 'Process done.'
 
 if __name__ == '__main__':
-    counts = load_matrix('forPY2.csv', 756, 175606)
-    m = ImplicitMF(counts)
-    print m.train_model().item_vectors
+    (trainMat, alpha) = load_matrix('music30k.csv', 1001, 298837)
+    testMat = load_Nby3('music30k-test!.csv',2000)
 
-    with open('forPY2.csv','w') as f:
-        f_csv = csv.writer(f)
-        f_csv.writerows(m.train_model().item_vectors)
-        f_csv.writerows('\n\n\n')
-        f_csv.writerows(m.train_model().user_vectors)
+    m = ImplicitMF(trainMat, alpha)
+    predVects = m.train_model()
+    curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
+    print curPred.shape
+
+    # with open('user_item_vectors.csv','w') as f:
+    #     f_csv = csv.writer(f)
+    #     f_csv.writerows(predVects.user_vectors)
+    #     f_csv.writerows('\n\n\n')
+    #     f_csv.writerows(predVects.item_vectors)
+    #
+    # with open('curPred.csv','w') as cur:
+    #     cur_csv = csv.writer(cur)
+    #     cur_csv.writerows(curPred)
+
+    N = 10 # top N tracks are recommended
+    P10K = 10000
+    num4test = 0
+    num4hit  = 0
+
+    for i in range(0, testMat.shape[0]):
+        userID  = testMat[i, 0]
+        trackID = testMat[i, 1]
+        if trainMat[userID, trackID]>0:
+            num4test += 1
+        else:
+            continue
+
+        userVec = trainMat[userID]
+        rowVec = userVec[0].todense()
+        notListen = np.where(rowVec[0] == 0)[1]
+        sampled = random.sample(notListen, P10K)
+        oneKrate = np.zeros((1, len(sampled)))
+
+        for j in range(0, len(sampled)):
+            itemIdx = sampled[j]
+            oneKrate[0, j] = curPred[userID-1, itemIdx]
+
+        corresp = curPred[userID-1, trackID]
+        thre = np.where(oneKrate > corresp)
+
+        if len(thre[1]) <= (N-1):
+            num4hit += 1
+        if i % 100 == 0:
+            print 'proccesed %i data points...' % i
+
+    print num4hit
+    print num4test

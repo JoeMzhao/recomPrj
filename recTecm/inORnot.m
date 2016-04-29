@@ -6,6 +6,7 @@ thre = 1 - poolSize/timestamp;
 buff = rand(1);
 
 if buff < thre
+    disp('In')
     a = 1;
 else
     a = 0;

@@ -28,7 +28,7 @@ def load_matrix(filename, num_users, num_items):
         user, timestamp, item = line.strip().split(',')
         user = int(user)
         item = int(item)
-        timestamp = float(timestamp)
+        timestamp = int(timestamp)
         if user >= num_users:
             continue
         if item >= num_items:
@@ -41,15 +41,15 @@ def load_matrix(filename, num_users, num_items):
             print 'loaded %i data points...' % i
     alpha = num_zeros / total
     print 'alpha is %.2f' % alpha
-    counts *= alpha
+    # counts *= alpha
     counts = sparse.csr_matrix(counts)
     t1 = time.time()
     print 'Finished loading matrix in %f seconds' % (t1 - t0)
-    return counts
+    return (counts, alpha)
 
 class ImplicitMF():
 
-    def __init__(self, counts, num_factors=10, num_iterations=1,
+    def __init__(self, counts, alpha, num_factors=10, num_iterations=2,
                  reg_param=0.8):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -57,11 +57,12 @@ class ImplicitMF():
         self.num_factors = num_factors
         self.num_iterations = num_iterations
         self.reg_param = reg_param
+        self.alpha = alpha
 
     def train_model(self):
-        self.user_vectors = np.random.normal(size=(self.num_users,
+        self.user_vectors = self.alpha * np.random.normal(size=(self.num_users,
                                                    self.num_factors))
-        self.item_vectors = np.random.normal(size=(self.num_items,
+        self.item_vectors = self.alpha * np.random.normal(size=(self.num_items,
                                                    self.num_factors))
 
         for i in xrange(self.num_iterations):
@@ -102,15 +103,11 @@ class ImplicitMF():
 
         return solve_vecs
 
-# class perforEva():
-#     def __init__(self, curPred, testMat):
-#         self.
-
 if __name__ == '__main__':
-    trainMat = load_matrix('music30k.csv', 1001, 298837)
+    (trainMat, alpha) = load_matrix('music30k.csv', 1001, 298837)
     testMat = load_Nby3('music30k-test!.csv',2000)
 
-    m = ImplicitMF(trainMat)
+    m = ImplicitMF(trainMat, alpha)
     predVects = m.train_model()
     curPred = (predVects.user_vectors).dot((predVects.item_vectors.T))
     print curPred.shape
@@ -125,12 +122,10 @@ if __name__ == '__main__':
     #     cur_csv = csv.writer(cur)
     #     cur_csv.writerows(curPred)
 
-    print testMat.shape
-    print testMat[1, 0]
-    print testMat[1, 1]
-
     N = 10 # top N tracks are recommended
-    P10K = 2000
+    P10K = 30000
+
+# ------- none incremental baseline -----------------------
     num4test = 0
     num4hit  = 0
 
@@ -162,3 +157,14 @@ if __name__ == '__main__':
 
     print num4hit
     print num4test
+
+# ------ the incremental section --------------------------
+    # trainSet = load_Nby3('music30k.csv', 30000)
+    # counter1 = 0
+    # counter2 = 0
+    # poolSize = 30000
+    #
+    # for i in range(0, testMat.shape[0]):
+    #     userID = testMat[i, 0]
+    #     trackID = testMat[i, 1]
+    #     userPool1 =

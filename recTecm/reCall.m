@@ -27,13 +27,15 @@ maxIters     = 400;
 regular_u    = 0.1;
 regular_v    = 0.34;
 tolerence    = 1e-5; 
-T            = 0;
+T            = 15;
 alpha        = 1e-1;
 beta         = 1e-1;
 
 poolSize  = mftrainEND;
 pool      = trainSet(1:poolSize, :);
 M         = 20;
+tobecheck1 = [];
+tobecheck2 = [];
 
 %% Process the data and obtain rate matrices
 trainRateMat  = zeros(numUser, numMovi);
@@ -48,9 +50,10 @@ end
 
 
 %% The initial phase >> train two initial matrices and keeps learning
-[userMat, moviMat, MAE1] = getMAE(trainRateMat, testRateMat);
-MAE1
-
+% [userMat, moviMat, MAE1] = getMAE(trainRateMat, testRateMat);
+% MAE1
+userMat = rand(20, 943);
+moviMat = rand(20, 1682);
 curPred  = userMat' * moviMat;
 N        = 10;
 P10K     = 200;
@@ -122,6 +125,14 @@ for i = 1:length(testSet)
                        userMat(:, uID) = userMat(:, uID) + ...
                            alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
                            alpha * beta .* userMat(:, uID);
+                       
+%                        tobecheck1 = [tobecheck1 userMat(:, uID)];
+%                        tobecheck2 = [tobecheck2 alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
+%                            alpha * beta .* userMat(:, uID)];
+                       
+%                        mean(alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
+%                            alpha * beta .* userMat(:, uID))
+
 
                        moviMat(:, SPuIdx(ii)) = moviMat(:, SPuIdx(ii)) + alpha * ita .* userMat(:, uID) - ...
                            alpha * beta .* moviMat(:, SPuIdx(ii));
