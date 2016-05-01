@@ -5,11 +5,15 @@ import loadMatrix
 import inORnot as io
 import whichOut as wo
 import sampleInput as sp
+import time
+import scipy.sparse as sparse
+from scipy.sparse.linalg import spsolve
+import copy
 
 class ImplicitMF():
 
     def __init__(self, counts, alpha, num_factors=10, num_iterations=1,
-                 reg_param=0.8):
+                 reg_param=0.2):
         self.counts = counts
         self.num_users = counts.shape[0]
         self.num_items = counts.shape[1]
@@ -19,17 +23,17 @@ class ImplicitMF():
         self.alpha = alpha
 
     def train_model(self):
-        self.user_vectors = self.alpha * np.random.normal(size=(self.num_users,
+        self.userMat = self.alpha * np.random.normal(size=(self.num_users,
                                                    self.num_factors))
-        self.item_vectors = self.alpha * np.random.normal(size=(self.num_items,
+        self.trackMat = self.alpha * np.random.normal(size=(self.num_items,
                                                    self.num_factors))
 
         for i in xrange(self.num_iterations):
             t0 = time.time()
             print 'Solving for user vectors...'
-            self.user_vectors = self.iteration(True, sparse.csr_matrix(self.item_vectors))
+            self.userMat = self.iteration(True, sparse.csr_matrix(self.trackMat))
             print 'Solving for item vectors...'
-            self.item_vectors = self.iteration(False, sparse.csr_matrix(self.user_vectors))
+            self.trackMat = self.iteration(False, sparse.csr_matrix(self.userMat))
             t1 = time.time()
             print 'iteration %i finished in %f seconds' % (i + 1, t1 - t0)
 
@@ -46,10 +50,10 @@ class ImplicitMF():
         t = time.time()
         for i in xrange(num_solve):
             if user:
-                counts_i = self.counts[i].toarray()
+                counts_i = self.counts[i]#.toarray()
             else:
-                counts_i = self.counts[:, i].T.toarray()
-            CuI = sparse.diags(counts_i, [0])
+                counts_i = self.counts[:, i].T#.toarray()
+            CuI = sparse.diags(counts_i, 0)
             pu = counts_i.copy()
             pu[np.where(pu != 0)] = 1.0
             YTCuIY = fixed_vecs.T.dot(CuI).dot(fixed_vecs)
@@ -67,25 +71,42 @@ class testVectors():
         self.userMat = np.random.rand(numUsers, M)
         self.trackMat = np.random.rand(numTracks, M)
 
+
+def serverSamplePositiveInput(curPred, userPool1, newCome, numUsers, numTracks):
+    SPuIdx = sp.SamplePositiveInput(curPred, userPool1, newCome, numUsers, numTracks)
+    return SPuIdx
+
+def serverSampleNegativeInput(curPred, userPool2, SPuIdx, newCome, numUsers, numTracks):
+    SNuIdx = sp.SampleNegativeInput(curPred, userPool2, SPuIdx, newCome, numUsers, numTracks)
+    return SNuIdx
+
+
+
+
+
+'''--------------------- >>>> main section <<<< -----------------------------'''
+
 if __name__ == '__main__':
     '''  >>> the none incremental model <<< '''
     numUsers = 1000
     numTracks = 298837
     poolSize = 1230815
-    M = 20
+    M = 10
+    trainAlpha = 5
 
     trainCountMat = loadMatrix.loadData2matrix('trainSetLF.csv', numUsers, numTracks)
     trainSet = loadMatrix.loadData2Set('trainSetLF.csv', poolSize)
     testSet = loadMatrix.loadData2Set('oneKtestSetLF.csv', 1000)
+    auxilaryMat = copy.copy(trainCountMat)
 
-    # vectors = testVectors(numUsers, numTracks, M)
-    m = ImplicitMF(trainCountMat, 10)
-    vectors = m.train_model()
+    vectors = testVectors(numUsers, numTracks, M)
+    # m = ImplicitMF(trainCountMat, trainAlpha)
+    # vectors = m.train_model()
 
     curPred = np.dot(vectors.userMat, vectors.trackMat.transpose())
 
     N = 10
-    P10K = 200
+    P10K = 2000
     num4test = 0
     num4hit = 0
 
@@ -93,7 +114,7 @@ if __name__ == '__main__':
         print '------------ This is %dth testing data point ----------' %i
         userID = int(testSet[i, 0])
         trackID = int(testSet[i, 1])
-        if trainCountMat[userID, trackID] >= 3:
+        if trainCountMat[userID, trackID] > 4:
             num4test += 1
         else:
             continue
@@ -115,12 +136,12 @@ if __name__ == '__main__':
     # print 'number of test %d' %num4test
     '''  >>> the incremental model <<< '''
 
-    alpha = 0.1
-    beta = 0.1
+    alpha = 1
+    beta = 1
     counter1 = 0
     counter2 = 0
     numIn = 0
-    T = 10
+    T = 1
     inBlis0 = 0
 
     for i in range(0, testSet.shape[0]):
@@ -131,6 +152,7 @@ if __name__ == '__main__':
         userPool1 = trainSet[bufIdx1[0], :]
 
         if io.inORnot(testSet[i, 2], poolSize):
+            print 'In!'
             numIn += 1
             trainCountMat[userID, trackID] += 1
             timeArray = trainSet[:, 2]
@@ -140,8 +162,11 @@ if __name__ == '__main__':
             bufIdx2 = np.where(trainSet[:, 0] == userID)
             userPool2 = trainSet[bufIdx2[0], :]
 
-            SPuIdx = sp.SamplePositiveInput(curPred, userPool1, testSet[i, :], numUsers, numTracks)
-            SNuIdx = sp.SampleNegativeInput(curPred, userPool2, SPuIdx, testSet[i, :], numUsers, numTracks)
+            SPuIdx = serverSamplePositiveInput(curPred, userPool1, testSet[i, :], numUsers, numTracks)
+            SNuIdx = serverSampleNegativeInput(curPred, userPool2, SPuIdx, testSet[i, :], numUsers, numTracks)
+            print '----->>>>>> length of SPuIdx is %d <<<<<<-----', len(SPuIdx)
+            print '----->>>>>> length of SNuIdx is %d <<<<<<-----', len(SNuIdx)
+
 
             if len(SPuIdx) == 0:
                 inBlis0 += 1
@@ -171,7 +196,7 @@ if __name__ == '__main__':
 
         curPred = np.dot(vectors.userMat, vectors.trackMat.transpose())
 
-        if trainCountMat[userID, trackID] >= 3:
+        if auxilaryMat[userID, trackID] > 4:
             counter2 += 1
             userArry = trainCountMat[userID, :]
             notListen = np.where(userArry == 0)
@@ -185,7 +210,7 @@ if __name__ == '__main__':
             if (len(thre[0]) <= (N-1)):
                 counter1 += 1
 
-    print '---------------- None incremental results -------------------------'
+    print '---------------- None incremental results --------------------------'
     print 'number of hits %d' %num4hit
     print 'number of test %d' %num4test
 
@@ -199,15 +224,9 @@ if __name__ == '__main__':
     print '--------------------- incomed points but length is 0----------------'
     print inBlis0
 
-
-
-
-
-
-
-
-
-
+    print '--------------------- list of parameters ---------------------------'
+    print 'M = %d, alpha and beta = %f, T = %d, topN = %d'% (M, alpha, T, N)
+    print 'regu_para = %f, confident_alpha = %d'%(0.2, trainAlpha)
 
 
 
@@ -221,19 +240,3 @@ if __name__ == '__main__':
 
 
 #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #

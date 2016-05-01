@@ -95,6 +95,7 @@ if __name__ == '__main__':
                         negaSum = np.sum(vectors.moviMat[idx, :], axis = 0)
                         negaAvg = negaSum/len(idx)
 
+                    #print vectors.userMat[userID, :]
                     vectors.userMat[userID, :] = vectors.userMat[userID, :] + alpha * ita * \
                                         (vectors.moviMat[SPuIdx[ii]] - negaAvg) - alpha * beta * \
                                         vectors.userMat[userID, :]
@@ -118,6 +119,7 @@ if __name__ == '__main__':
                 candiRate[0, j] = curPred[userID, bufIdx]
             corresp = curPred[userID, movieID]
             thre = np.where(candiRate[0] > corresp)
+            # print 'the length of thre is %d, corresp is %f' %(len(thre[0]), corresp)
 
             if (len(thre[0]) <= (N-1)):
                 counter2 += 1
