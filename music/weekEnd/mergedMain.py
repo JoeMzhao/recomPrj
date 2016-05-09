@@ -13,7 +13,7 @@ import copy
 
 class ImplicitMF():
 
-    def __init__(self, counts, alpha, num_factors=10, num_iterations=1,
+    def __init__(self, counts, alpha, num_factors=20, num_iterations=1,
                  reg_param=0.2):
         self.counts = counts
         self.num_users = counts.shape[0]
@@ -89,8 +89,8 @@ if __name__ == '__main__':
     numUsers = 1000
     numTracks = 298837
     poolSize = 1230815
-    M = 10
-    trainAlpha = 1
+    M = 20
+    trainAlpha = 5
 
     trainCountMat = loadMatrix.loadData2matrix('trainSetLF.csv', numUsers, numTracks)
     trainSet = loadMatrix.loadData2Set('trainSetLF.csv', poolSize)
@@ -98,15 +98,18 @@ if __name__ == '__main__':
     auxilaryMat = copy.copy(trainCountMat)
 
     # vectors = testVectors(numUsers, numTracks, M)
-    # m = ImplicitMF(trainCountMat, trainAlpha)
-    # vectors = m.train_model()
-    userMat = loadMatrix.loadLatentVectors('userVectors.csv', numUsers, M)
-    trackMat = loadMatrix.loadLatentVectors('trackVectors.csv', numTracks, M)
+    m = ImplicitMF(trainCountMat, trainAlpha)
+    vectors = m.train_model()
+
+    userMat = vectors.userMat
+    trackMat = vectors.trackMat
+    # userMat = loadMatrix.loadLatentVectors('userVectors.csv', numUsers, M)
+    # trackMat = loadMatrix.loadLatentVectors('trackVectors.csv', numTracks, M)
 
     curPred = np.dot(userMat, trackMat.transpose())
 
     N = 10
-    P10K = 2000
+    P10K = 20000
     num4test = 0
     num4hit = 0
 
@@ -136,12 +139,12 @@ if __name__ == '__main__':
     # print 'number of test %d' %num4test
     '''  >>> the incremental model <<< '''
 
-    alpha = 0.001
-    beta = 0.001
+    alpha = 1
+    beta = 1
     counter1 = 0
     counter2 = 0
     numIn = 0
-    T = 3
+    T = 1
     inBlis0 = 0
     regu_para = 0.2
     confiMat = trainAlpha * trainCountMat
@@ -156,16 +159,28 @@ if __name__ == '__main__':
 
         if io.inORnot(testSet[i, 2], poolSize):
             print 'In!'
-            confiMat[userID, trackID] += 1
-            Cui = sparse.diags(confiMat[userID, :], 0)
-            eye = sparse.eye(numTracks)
-            pui = copy.copy(confiMat[userID, :])
-            pui[np.where(pui != 0)] = 1
-            yTy = trackMat.transpose().dot(trackMat)
-            yTCuiy = np.dot(trackMat.transpose() * Cui.tocsc(), trackMat)
-            yTCupu = np.dot(trackMat.transpose() * (Cui + eye), pui.transpose())
-            userMat[userID, :] = spsolve(sparse.csr_matrix(yTy + yTCuiy + lbd_eye),sparse.csr_matrix(yTCupu))
-                        
+            # confiMat[userID, trackID] += trainAlpha
+            # Cui = sparse.diags(confiMat[userID, :], 0)
+            # eye = sparse.eye(numTracks)
+            # pui = copy.copy(confiMat[userID, :])
+            # pui[np.where(pui != 0)] = 1
+            # yTy = trackMat.transpose().dot(trackMat)
+            # yTCuiy = np.dot(trackMat.transpose() * Cui.tocsc(), trackMat)
+            # yTCupu = np.dot(trackMat.transpose() * (Cui + eye), pui.transpose())
+            # # print '-----------------<><><><><><><><><>----------------'
+            # # print userMat[userID, :]
+            # userMat[userID, :] = spsolve(sparse.csr_matrix(yTy + yTCuiy + lbd_eye), sparse.csr_matrix(yTCupu.reshape((M, 1))))
+            # # print userMat[userID, :]
+            # # print '-----------------<><><><><><><><><>----------------'
+            Cii = sparse.diags(confiMat[:, trackID], 0)
+            eye = sparse.eye(numUsers)
+            pii = copy.copy(confiMat[:, trackID])
+            pii[np.where(pii != 0)] = 1
+            xTx = userMat.transpose().dot(userMat)
+            xTCuix = np.dot(userMat.transpose() * Cii.tocsc(), userMat)
+            yTCipi = np.dot(userMat.transpose() * (Cii + eye), pii.transpose())
+            trackMat[trackID, :] = spsolve(sparse.csr_matrix(xTx + xTCuix + lbd_eye), sparse.csr_matrix(yTCipi.reshape((M, 1))))
+
             numIn += 1
             trainCountMat[userID, trackID] += 1
             timeArray = trainSet[:, 2]
@@ -186,15 +201,7 @@ if __name__ == '__main__':
 
             for roud in range(0, T):
                 for ii in range(0, len(SPuIdx)):
-                    Cii = sparse.diags(confiMat[:, SPuIdx[ii]], 0)
-                    eye = sparse.eye(numUsers)
-                    pii = copy.copy(confiMat[:, SPuIdx[ii]])
-                    pii[np.where(pii != 0)] = 1
-                    xTx = userMat.transpose().dot(userMat)
-                    xTCuix = np.dot(userMat.transpose() * Cii.tocsc(), userMat)
-                    yTCipi = np.dot(userMat.transpose() * (Cii + eye), pii.transpose())
-                    trackMat[SPuIdx[ii], :] = spsolve(sparse.csr_matrix(xTx + xTCuix + lbd_eye), sparse.csr_matrix(yTCipi))
-                    
+
                     countHat = trainCountMat[userID, SPuIdx[ii]]
                     countAvg = np.mean(trainCountMat[userID, SNuIdx[:]])
                     ita = max(0, countHat - countAvg)
@@ -253,14 +260,3 @@ if __name__ == '__main__':
 
 
 
-
-
-
-
-
-
-
-
-
-
-#
