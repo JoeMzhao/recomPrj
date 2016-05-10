@@ -90,7 +90,7 @@ if __name__ == '__main__':
     numTracks = 298837
     poolSize = 1230815
     M = 20
-    trainAlpha = 5
+    trainAlpha = 1
 
     trainCountMat = loadMatrix.loadData2matrix('trainSetLF.csv', numUsers, numTracks)
     trainSet = loadMatrix.loadData2Set('trainSetLF.csv', poolSize)
@@ -98,13 +98,13 @@ if __name__ == '__main__':
     auxilaryMat = copy.copy(trainCountMat)
 
     # vectors = testVectors(numUsers, numTracks, M)
-    m = ImplicitMF(trainCountMat, trainAlpha)
-    vectors = m.train_model()
-
-    userMat = vectors.userMat
-    trackMat = vectors.trackMat
-    # userMat = loadMatrix.loadLatentVectors('userVectors.csv', numUsers, M)
-    # trackMat = loadMatrix.loadLatentVectors('trackVectors.csv', numTracks, M)
+    # m = ImplicitMF(trainCountMat, trainAlpha)
+    # vectors = m.train_model()
+    #
+    # userMat = vectors.userMat
+    # trackMat = vectors.trackMat
+    userMat = loadMatrix.loadLatentVectors('userVectors.csv', numUsers, M)
+    trackMat = loadMatrix.loadLatentVectors('trackVectors.csv', numTracks, M)
 
     curPred = np.dot(userMat, trackMat.transpose())
 
@@ -147,6 +147,7 @@ if __name__ == '__main__':
     T = 1
     inBlis0 = 0
     regu_para = 0.2
+    timeRecords = []
     confiMat = trainAlpha * trainCountMat
     lbd_eye = sparse.eye(M) * regu_para
 
@@ -159,19 +160,19 @@ if __name__ == '__main__':
 
         if io.inORnot(testSet[i, 2], poolSize):
             print 'In!'
-            # confiMat[userID, trackID] += trainAlpha
-            # Cui = sparse.diags(confiMat[userID, :], 0)
-            # eye = sparse.eye(numTracks)
-            # pui = copy.copy(confiMat[userID, :])
-            # pui[np.where(pui != 0)] = 1
-            # yTy = trackMat.transpose().dot(trackMat)
-            # yTCuiy = np.dot(trackMat.transpose() * Cui.tocsc(), trackMat)
-            # yTCupu = np.dot(trackMat.transpose() * (Cui + eye), pui.transpose())
-            # # print '-----------------<><><><><><><><><>----------------'
-            # # print userMat[userID, :]
-            # userMat[userID, :] = spsolve(sparse.csr_matrix(yTy + yTCuiy + lbd_eye), sparse.csr_matrix(yTCupu.reshape((M, 1))))
-            # # print userMat[userID, :]
-            # # print '-----------------<><><><><><><><><>----------------'
+            t0 = time.time()
+            confiMat[userID, trackID] += trainAlpha
+
+            Cui = sparse.diags(confiMat[userID, :], 0)
+            eye = sparse.eye(numTracks)
+            pui = copy.copy(confiMat[userID, :])
+            pui[np.where(pui != 0)] = 1
+            yTy = trackMat.transpose().dot(trackMat)
+            yTCuiy = np.dot(trackMat.transpose() * Cui.tocsc(), trackMat)
+            yTCupu = np.dot(trackMat.transpose() * (Cui + eye), pui.transpose())
+            userMat[userID, :] = spsolve(sparse.csr_matrix(yTy + yTCuiy + lbd_eye), sparse.csr_matrix(yTCupu.reshape((M, 1))))
+            # store_Xu = spsolve(sparse.csr_matrix(yTy + yTCuiy + lbd_eye), sparse.csr_matrix(yTCupu.reshape((M, 1))))
+
             Cii = sparse.diags(confiMat[:, trackID], 0)
             eye = sparse.eye(numUsers)
             pii = copy.copy(confiMat[:, trackID])
@@ -180,6 +181,7 @@ if __name__ == '__main__':
             xTCuix = np.dot(userMat.transpose() * Cii.tocsc(), userMat)
             yTCipi = np.dot(userMat.transpose() * (Cii + eye), pii.transpose())
             trackMat[trackID, :] = spsolve(sparse.csr_matrix(xTx + xTCuix + lbd_eye), sparse.csr_matrix(yTCipi.reshape((M, 1))))
+            # store_Yi = spsolve(sparse.csr_matrix(xTx + xTCuix + lbd_eye), sparse.csr_matrix(yTCipi.reshape((M, 1))))
 
             numIn += 1
             trainCountMat[userID, trackID] += 1
@@ -193,15 +195,14 @@ if __name__ == '__main__':
             SPuIdx = serverSamplePositiveInput(curPred, userPool1, testSet[i, :], numUsers, numTracks)
             SNuIdx = serverSampleNegativeInput(curPred, userPool2, SPuIdx, testSet[i, :], numUsers, numTracks)
 
-            print '----->>>>>> length of SPuIdx is %d <<<<<<-----', len(SPuIdx)
-            print '----->>>>>> length of SNuIdx is %d <<<<<<-----', len(SNuIdx)
+            print '----->>>>>> length of SPuIdx is %d <<<<<<-----'% len(SPuIdx)
+            print '----->>>>>> length of SNuIdx is %d <<<<<<-----'% len(SNuIdx)
 
             if len(SPuIdx) == 0:
                 inBlis0 += 1
 
             for roud in range(0, T):
                 for ii in range(0, len(SPuIdx)):
-
                     countHat = trainCountMat[userID, SPuIdx[ii]]
                     countAvg = np.mean(trainCountMat[userID, SNuIdx[:]])
                     ita = max(0, countHat - countAvg)
@@ -223,6 +224,9 @@ if __name__ == '__main__':
                     for j in range(0, len(SNuIdx)):
                         trackMat[SNuIdx[j], :] = trackMat[SNuIdx[j], :] - alpha * ita *\
                                         userMat[userID, :] - alpha * beta * trackMat[SNuIdx[j], :]
+            t1 = time.time()
+            timeRecords.append(t1-t0)
+            print 'The new coming point consumes %f seconds' % (t1-t0)
 
         curPred = np.dot(userMat, trackMat.transpose())
 
@@ -258,5 +262,19 @@ if __name__ == '__main__':
     print 'M = %d, alpha and beta = %f, T = %d, topN = %d'% (M, alpha, T, N)
     print 'regu_para = %f, confident_alpha = %d'%(0.2, trainAlpha)
 
+    print '--------------------- time consumption ----------------------'
+    print 'each income point takes %f seconds' % np.mean(timeRecords)
 
 
+
+
+
+
+
+
+
+
+
+
+
+#
