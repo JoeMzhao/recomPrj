@@ -1,28 +1,33 @@
 clear; close all; clc
 
-addpath('ml-100k');
+% addpath('ml-100k');
 
 global alpha beta numUser numMovi poolSize M maxIters 
 global tolerence T regular_u regular_v 
 
-rawData      = load('u.data');
-sorted       = sortrows(rawData, 4);
+% rawData      = load('u.data');
+% sorted       = sortrows(rawData, 4);
 %sorted       = rawData;
-sorted(:, 4) = 1:size(sorted, 1); 
+% sorted(:, 4) = 1:size(sorted, 1); 
+sorted = load('trainSetLF.csv');
+sorted(:, 1) = sorted(:, 1) + 1;
+sorted(:, 2) = sorted(:, 2) + 1;
+
 dataLen      = size(sorted, 1);
 
-prop         = 0.95;
+prop         = 1;
 mftrainEND   = (prop - 0.00) * dataLen;
 increSTART   = mftrainEND + 1;
 increEND     = prop * dataLen;
 testSTART    = prop * dataLen + 1;
 
 trainSet     = sorted(1:mftrainEND, :);
-testSet      = sorted(testSTART : end, :);
-increSet     = sorted(increSTART:increEND, :);
+testSet      = load('oneKtestSetLF.csv');
+testSet(:, 1) = testSet(:, 1) + 1;
+testSet(:, 2) = testSet(:, 2) + 1;
 
-numUser      = 943;
-numMovi      = 1682;
+numUser      = 1000;
+numMovi      = 298837;
 maxIters     = 400; 
 regular_u    = 0.1;
 regular_v    = 0.34;
@@ -34,29 +39,27 @@ beta         = 1e-1;
 poolSize  = mftrainEND;
 pool      = trainSet(1:poolSize, :);
 M         = 20;
-tobecheck1 = [];
-tobecheck2 = [];
 
 %% Process the data and obtain rate matrices
 trainRateMat  = zeros(numUser, numMovi);
 testRateMat   = zeros(numUser, numMovi);
 
 for i  = 1 : poolSize
-    trainRateMat(trainSet(i, 1), trainSet(i, 2)) = trainSet(i, 3);
+    trainRateMat(trainSet(i, 1), trainSet(i, 2)) = trainRateMat(trainSet(i, 1), trainSet(i, 2)) + 1;
 end
 for i  = 1 : size(testSet, 1)
-    testRateMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 3);  
+    testRateMat(testSet(i, 1), testSet(i, 2)) = testRateMat(testSet(i, 1), testSet(i, 2)) + 1;  
 end
-
+trainRateMat = sparse(trainRateMat);
+testRateMat = sparse(testRateMat);
 
 %% The initial phase >> train two initial matrices and keeps learning
-% [userMat, moviMat, MAE1] = getMAE(trainRateMat, testRateMat);
-% MAE1
-userMat = rand(20, 943);
-moviMat = rand(20, 1682);
+[userMat, moviMat, MAE1] = getMAE(trainRateMat, testRateMat);
+MAE1
+
 curPred  = userMat' * moviMat;
 N        = 10;
-P10K     = 200;
+P10K     = 20000;
 
 num5test = 0;
 numHits  = 0;
@@ -65,15 +68,16 @@ counter1 = 0;
 counter2 = 0;
 
 for i = 1:size(testSet, 1)
-    if testSet(i, 3) == 5
+    i
+    uID      = testSet(i, 1);
+    moviID   = testSet(i, 2);
+   
+    if trainRateMat(uID, moviID) >= 5
         counter2 = counter2 + 1;
     else
         continue;
     end
-    
-    uID      = testSet(i, 1);
-    moviID   = testSet(i, 2);
-        
+           
     oneKidx  = find(trainRateMat(uID, :) == 0);    
     oneKidx  = oneKidx(randperm(length(oneKidx)));
     oneKidx  = oneKidx(1:P10K);
@@ -99,9 +103,9 @@ for i = 1:length(testSet)
         
       if inORnot(testSet(i, 4))
                numIn  = numIn + 1;
-               trainRateMat(testSet(i, 1), testSet(i, 2)) = testSet(i, 3);          
-               timeArry              = pool(:, 4);          
-               [repIdx, threshArry2] = whichOut(timeArry, testSet(i, 4)); 
+               trainRateMat(testSet(i, 1), testSet(i, 2)) = trainRateMat(testSet(i, 1), testSet(i, 2)) + 1;          
+               timeArry              = pool(:, 3);          
+               [repIdx, threshArry2] = whichOut(timeArry, testSet(i, 3)); 
                pool(repIdx, :)       = testSet(i, :);
 
                userUpool2 = pool(find(pool(:, 1) == uID), :);
@@ -125,15 +129,7 @@ for i = 1:length(testSet)
                        userMat(:, uID) = userMat(:, uID) + ...
                            alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
                            alpha * beta .* userMat(:, uID);
-                       
-%                        tobecheck1 = [tobecheck1 userMat(:, uID)];
-%                        tobecheck2 = [tobecheck2 alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
-%                            alpha * beta .* userMat(:, uID)];
-                       
-%                        mean(alpha * ita .* (moviMat(:, SPuIdx(ii)) - nega_avg) - ...
-%                            alpha * beta .* userMat(:, uID))
-
-
+                      
                        moviMat(:, SPuIdx(ii)) = moviMat(:, SPuIdx(ii)) + alpha * ita .* userMat(:, uID) - ...
                            alpha * beta .* moviMat(:, SPuIdx(ii));
 
@@ -147,7 +143,7 @@ for i = 1:length(testSet)
        
            curPred   = userMat' * moviMat;
            
-           if testSet(i, 3) == 5 
+           if trainRateMat(uID, moviID) >= 5
                num5test = num5test + 1;       
                oneKidx  = find(trainRateMat(uID, :) == 0);
                oneKidx  = oneKidx(randperm(length(oneKidx)));
