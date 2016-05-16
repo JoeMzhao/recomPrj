@@ -1,20 +1,30 @@
 import numpy as np
-import random
-import math
+import scipy.io
+import nimfa
 import loadMatrix
+import random
 import inORnot as io
 import whichOut as wo
 import sampleInput as sp
 
-class testVectors():
-    def __init__(self, numUsers, numMovies, M):
-        self.userMat = np.random.rand(numUsers, M)
-        self.moviMat = np.random.rand(numMovies, M)
-
-
+''' the movieLens 100k data set contains 943 users and 1682 movies '''
 
 if __name__ == '__main__':
-    '''  >>> the none incremental model <<< '''
+    mat = scipy.io.loadmat('movielens100k.mat')
+    V = mat['ratings']
+    lsnmf = nimfa.Lsnmf(V, seed="random_vcol", rank=20, max_iter=12, sub_iter=10,
+                    inner_sub_iter=10, beta=0.1)
+    lsnmf_fit = lsnmf()
+
+    userMat = lsnmf_fit.coef().todense().T
+    moviMat = lsnmf_fit.basis().todense()
+
+    print '<><><><><>--- latent matrices shapes ---<><><><><><><>'
+    print userMat.shape
+    print moviMat.shape
+    print '<><><><><>------------------------------<><><><><><><>'
+
+    curPred = np.dot(userMat, moviMat.T)
     numUsers = 943
     numMovies = 1682
     poolSize = 95000
@@ -24,15 +34,14 @@ if __name__ == '__main__':
     trainSet = loadMatrix.loadData2Set('trainSetML.csv', poolSize)
     testSet = loadMatrix.loadData2Set('testSetML.csv', 5000)
 
-    vectors = testVectors(numUsers, numMovies, M)
-    curPred = np.dot(vectors.userMat, vectors.moviMat.transpose())
-
     N = 10 # recommend top N movies
     P10K = 200
     num4test = 0
     num4hit = 0
 
     for i in range(0, testSet.shape[0]):
+        if i%1000 == 0:
+            print i
         if testSet[i, 2] == 5:
             num4test += 1
         else:
@@ -44,6 +53,7 @@ if __name__ == '__main__':
         notListen = np.where(userArry == 0)
         sampled = random.sample(notListen[0], P10K)
         candiRate = np.zeros((1, len(sampled)))
+
         for j in range(0, len(sampled)):
             bufIdx = sampled[j]
             candiRate[0, j] = curPred[userID, bufIdx]
@@ -52,18 +62,23 @@ if __name__ == '__main__':
 
         if (len(thre[0]) <= (N-1)):
             num4hit += 1
+    print ' -------------- >>> results list <<< -------------'
+    print num4hit
+    print num4test
+
 
     '''  >>> the incremental model <<< '''
-    alpha = 0.1
-    beta = 0.1
+    alpha = 1
+    beta = 1
 
     counter1 = 0
     counter2 = 0
     numIn = 0
-    T = 10
+    T = 3
 
     for i in range(0, testSet.shape[0]):
-        print '------------ This is %dth testing data point ----------' %i
+        if i%1000 == 0:
+            print '------------ This is %dth testing data point ----------' %i
         userID = testSet[i, 0]
         movieID = testSet[i, 1]
         bufIdx1 = np.where(trainSet[:, 0] == userID)
@@ -92,21 +107,21 @@ if __name__ == '__main__':
                         negaAvg = np.zeros((1, M))
                     else:
                         idx = SNuIdx[:]
-                        negaSum = np.sum(vectors.moviMat[idx, :], axis = 0)
+                        negaSum = np.sum(moviMat[idx, :], axis = 0)
                         negaAvg = negaSum/len(idx)
 
                     #print vectors.userMat[userID, :]
-                    vectors.userMat[userID, :] = vectors.userMat[userID, :] + alpha * ita * \
-                                        (vectors.moviMat[SPuIdx[ii]] - negaAvg) - alpha * beta * \
-                                        vectors.userMat[userID, :]
-                    vectors.moviMat[SPuIdx[ii], :] = vectors.moviMat[SPuIdx[ii], :] + alpha * ita * \
-                                        vectors.userMat[userID, :] - alpha * beta * vectors.moviMat[SPuIdx[ii], :]
+                    userMat[userID, :] = userMat[userID, :] + alpha * ita * \
+                                        (moviMat[SPuIdx[ii]] - negaAvg) - alpha * beta * \
+                                        userMat[userID, :]
+                    moviMat[SPuIdx[ii], :] = moviMat[SPuIdx[ii], :] + alpha * ita * \
+                                        userMat[userID, :] - alpha * beta * moviMat[SPuIdx[ii], :]
 
                     for j in range(0, len(SNuIdx)):
-                        vectors.moviMat[SNuIdx[j], :] = vectors.moviMat[SNuIdx[j], :] - alpha * ita *\
-                                        vectors.userMat[userID, :] - alpha * beta * vectors.moviMat[SNuIdx[j], :]
+                        moviMat[SNuIdx[j], :] = moviMat[SNuIdx[j], :] - alpha * ita *\
+                                        userMat[userID, :] - alpha * beta * moviMat[SNuIdx[j], :]
 
-        curPred = np.dot(vectors.userMat, vectors.moviMat.transpose())
+        curPred = np.dot(userMat, moviMat.T)
 
         if testSet[i, 2] == 5:
             counter1 += 1
@@ -131,3 +146,4 @@ if __name__ == '__main__':
     print '---------------- Incremental results ------------------------------'
     print 'number of hits %d' %counter2
     print 'number of test %d' %counter1
+    print 'number of incoming points in testset %d' %numIn
