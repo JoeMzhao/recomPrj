@@ -11,13 +11,13 @@ import sampleInput as sp
 
 if __name__ == '__main__':
     mat = scipy.io.loadmat('movielens100k.mat')
-    V = mat['ratings']
+    V = mat['ratings'].T
     lsnmf = nimfa.Lsnmf(V, seed="random_vcol", rank=20, max_iter=12, sub_iter=10,
                     inner_sub_iter=10, beta=0.1)
     lsnmf_fit = lsnmf()
 
-    userMat = lsnmf_fit.coef().todense().T
-    moviMat = lsnmf_fit.basis().todense()
+    moviMat = lsnmf_fit.coef().todense().T
+    userMat = lsnmf_fit.basis().todense()
 
     print '<><><><><>--- latent matrices shapes ---<><><><><><><>'
     print userMat.shape
@@ -68,8 +68,8 @@ if __name__ == '__main__':
 
 
     '''  >>> the incremental model <<< '''
-    alpha = 1
-    beta = 1
+    alpha = 2
+    beta = 2
 
     counter1 = 0
     counter2 = 0
