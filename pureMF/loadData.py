@@ -9,7 +9,7 @@ def loadDataExplicit(filename, numRows, numUser, numItem, percentage, spliter, S
 		user, item, rating, timeStamp = line.strip().split(spliter)
 		userID = int(int(user)-1)
 		# if Sorted:
-		# 	if userID == 550:
+		# 	if userID == 550 or userID == 188:
 		# 		continue
 		itemID = int(int(item)-1)
 		bitArray[0, itemID] += 1

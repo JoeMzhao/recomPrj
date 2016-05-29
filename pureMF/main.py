@@ -68,101 +68,100 @@ class mfExplicit():
 
 if __name__ == '__main__':
 
-	numUser = 943
-	numItem = 1682
+	numUser = 943  #6040
+	numItem = 1682 #3952
 	regular_u = 0.4
 	regular_v = 0.4
 	M = 20
-	tolerence = 1e-5
+	tolerence = 1e-2
 	maxIter = 500
-	numRows = 100000
+	numRows = 100000 #100000 #
 	percentage = 0.98
 	sampleRange = 210
 	topN = 10
 																#Sorted, step/stamp
 	trainSet, testSet, ratingMat, bitArray = \
-				LD.loadDataExplicit('u.data', numRows, numUser, numItem, percentage, '\t', 1, 1)
+				LD.loadDataExplicit('u.data', numRows, numUser, numItem, percentage, '\t', 0, 1)
 
 	prediction = mfExplicit(numUser, numItem, regular_u, regular_v, M, tolerence, maxIter, trainSet, testSet, ratingMat)
 	prediction.startMF()
-	MAE = EVA.computeMAE(testSet, prediction.curPred)
-	num4hit, num4Test = EVA.computeRecallNonIncre(testSet, ratingMat, prediction.curPred, topN, sampleRange)
-	RECALL = num4hit/num4Test
-	print 'MAE of pure MF is: %f'%MAE
-	print 'RECALL of pure MF is: %.3f, num4hit is %d, num4Test is %d'%\
-							((float(num4hit)/num4Test), num4hit, num4Test)
+
 
 
 	''' ----->>>  Incremental Model  <<<-----'''
 	numIncome = 0
-	spuLen = []
-	snuLen = []
 	curPred = copy.copy(prediction.curPred)
 	userMat = copy.copy(prediction.userMat)
 	itemMat = copy.copy(prediction.itemMat)
 	poolSize = trainSet.shape[0]
-	T = 3
-	alpha = 0.0001
-	beta = 0.01
+	T = 7
+	alpha1 = 0.0006
+	beta = 0.001
 	incre4test = 0
 	incre4hit = 0
+	sizeRsv = 800.0
+	reservoir = np.zeros((0, 4))
+	flag = 0
+	full = 0
+	reservoirChanged = 1
+	endTimestamp = trainSet[-1, 3]
 
 	for i in xrange(0, testSet.shape[0]):
-		if i%500 == 0:
-			print '---- %dth testing dataset ----'%i
+
 		userID = int(testSet[i, 0])
 		itemID = int(testSet[i, 1])
-		bufIdx1 = np.where(trainSet[:, 0] == userID)[0]
-		userPool1 = trainSet[bufIdx1, :]
-		if io.inORnot(testSet[i, 3], poolSize):
-			printed1 = 1
-			printed2 = 1
-			numIncome += 1
-			ratingMat[userID, itemID] = testSet[i, 2]
-			timeArray = trainSet[:, 3]
-			kickIdx = wo.whichOut(timeArray, testSet[i, 3])
-			trainSet[kickIdx, :] = testSet[i, :]
+		ratingMat[userID, itemID] = testSet[i, 2]
+		testSet[i, 3] = testSet[i, 3] - endTimestamp
+		tmstp = testSet[i, 3]
 
-			bufIdx2 = np.where(trainSet[:, 0] == userID)[0]
-			userPool2 = trainSet[bufIdx2, :]
+		if reservoir.shape[0] <= sizeRsv-1:
+			reservoir = np.vstack([reservoir, testSet[i, :]])
+		else:
+			full = 1
+			bufIdx1 = np.where(reservoir[:, 0] == userID)[0]
+			userPool1 = np.vstack([reservoir[bufIdx1, :], testSet[i, :]])
+			intoProb = 1 - sizeRsv/tmstp
+			seed = random.random()
+			if seed <= intoProb:
+				# print 'Added to reservoir! ID is %d'%testSet[i, 1]
+				numIncome += 1
+				reservoirChanged = 1
+				rsvTimeArray = reservoir[:, 3]
+				thredArray1 = np.exp(1.0/(tmstp - rsvTimeArray))
+				buffArray = -np.exp(-thredArray1)
+				thredArray2 = 1 - np.exp(buffArray)
+				probArry = np.random.uniform(0, 1, sizeRsv)
+				right = thredArray2 - probArry
+				rplcdIdx = np.where(right == right.max())[0][0]
+				reservoir[rplcdIdx, :] = testSet[i, :]
 
-			SPuIdx = sp.smpPosiInput(curPred, userPool1, testSet[i, :], numUser, numItem)
-			SNuIdx = sp.smpNegaInput(curPred, userPool2, SPuIdx, testSet[i, :], numUser, numItem)
+		if full and reservoirChanged:
+			reservoirChanged = 0
+			bufIdx2 = np.where(reservoir[:, 0] == userID)[0]
+			userPool2 = reservoir[bufIdx2, :]
 
-			spuLen.append(len(SPuIdx))
-			snuLen.append(len(SNuIdx))
-			# if userID == 550:
-			# 	time.sleep(0.1)
-			# 	print 'SPuIdx is following:'
-			# 	print SPuIdx
-			# 	print 'SNuIdx is following:'
-			# 	print SNuIdx
-			# 	print userMat[550, :]
+			SPuIdx = sp.smpPosiInput(curPred, userPool1, userID, numUser, numItem)
+			SPuIdx = random.sample(SPuIdx, int(len(SPuIdx) * 0.2))
+			SNuIdx = sp.smpNegaInput(curPred, userPool2, SPuIdx, userID, numUser, numItem)
+			SNuIdx = random.sample(SNuIdx, int(len(SNuIdx) * 0.2))
 
-			# if printed1:
-			# 	print ':::::::::Original usermat:::::::'
-			# 	print userMat[userID, :]
-			# 	printed1 = 0
 			for rnd in xrange(0, T):
+				alpha = alpha1/((1+rnd)**0.1)
 				for ii in xrange(0, len(SPuIdx)):
+					flag = 1
 					rate_hat = curPred[userID, SPuIdx[ii]]
 					if len(SNuIdx) == 0:
 						rate_avg = 0
 					else:
 						rate_avg = np.mean(curPred[userID, SNuIdx[:]])
 					ita = max(0.0, rate_hat - rate_avg)
-					# if printed1:
-					# 	print 'ce la ita %f:'%ita
-					# 	print 'length of SPuIdx and SNuIdx%d, %d'%(len(SPuIdx), len(SNuIdx))
-					# 	printed1 = 0
+
 					if len(SNuIdx) == 0:
 						nega_avg = np.zeros((1, M))
 					else:
 						idx = SNuIdx[:]
 						nega_sum = np.sum(itemMat[idx, :], axis=0)
 						nega_avg = nega_sum/len(SNuIdx)
-					# print 'This is the reduction:'
-					# print itemMat[SPuIdx[ii], :] - nega_avg
 
 					userMat[userID, :] = userMat[userID, :] + alpha * ita * \
 										(itemMat[SPuIdx[ii], :] - nega_avg) - \
@@ -172,13 +171,11 @@ if __name__ == '__main__':
 					for j in xrange(0, len(SNuIdx)):
 						itemMat[SNuIdx[j], :] = itemMat[SNuIdx[j], :] - alpha * ita * \
 										userMat[userID, :] - alpha * beta * itemMat[SNuIdx[j], :]
-			# if printed2:
-			# 	print '::::::::After usermat:::::::'
-			# 	print userMat[userID, :]
-			# 	printed2 = 0
+		if flag:
 			curPred = np.dot(userMat, itemMat.T)
+			flag = 0
 
-		if testSet[i, 2] >= 4 and bitArray[0, itemID] > 0:
+		if testSet[i, 2] >= 4 and bitArray[0, itemID] > 0 and full:
 			print '------- Evaluating details -------'
 			print ' %dth testing point'%i
 			print 'userID : %d       itemID : %d'%(userID, itemID)
@@ -202,27 +199,21 @@ if __name__ == '__main__':
 
 	print '========== results list ==========='
 	print '-------- None incremental -----'
+	MAE = EVA.computeMAE(testSet, prediction.curPred)
+	num4hit, num4Test = EVA.computeRecallNonIncre(testSet[sizeRsv:], ratingMat, prediction.curPred, topN, sampleRange)
+	RECALL = num4hit/num4Test
 	print 'MAE of pure MF is: %f'%MAE
 	print 'RECALL of pure MF is: %.3f, num4hit is %d, num4Test is %d'%\
 							((float(num4hit)/num4Test), num4hit, num4Test)
+
 	print '--------- Incremental ---------'
 	MAE2 = EVA.computeMAE(testSet, curPred)
 	print 'MAE =  %f'%MAE2
 	print 'RECALL = %f, incre4hit = %d, incre4test = %d'%\
 						((float(incre4hit)/incre4test), incre4hit, incre4test)
 
+	print '--------- Parameter list -----------'
+	print 'num of incoming point: %d '%numIncome
+
 
 	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	#
-	# #
