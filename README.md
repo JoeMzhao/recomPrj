@@ -49,10 +49,15 @@ Requirements:
  * SciPy 
 
  
-`sh cvxMAE.sh` generates the convex figures
-`sh iteration.sh` generates the effects of T
-`sh reservoirSize.sh` generates the effects of size of reservoir
-`sh demfNoffline.sh` generates time and memory consumption comparison
+`sh cvxMAE.sh` generates the convex figures.
+
+`sh iteration.sh` generates the effects of T.
+
+`sh reservoirSize.sh` generates the effects of size of reservoir.
+
+`sh demfNoffline.sh` generates time and memory consumption comparison.
+
+
 
 Experimental results will be written in following .txt file:
 
