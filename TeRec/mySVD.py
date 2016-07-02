@@ -99,7 +99,6 @@ class svdTrain():
         MAESum = 0
         for item in self.testSet:
             MAECount += 1
-            # print self.rBar(item[0],item[1])
             MAESum = MAESum + abs(self.rBar(item[0],item[1])-float(item[2]))
 
         print 'finished testing!'
@@ -127,7 +126,6 @@ def getCurPred(userID, numItem, userMat, itemMat, mu, bu, bi, userBitArray, item
     for i in xrange(0, numItem):
         curPred[0, i] = getRbar(bu, bi, userID, i, userMat, itemMat, userBitArray, itemBitArray, mu, maxRating, minRating)
     return curPred
-
 
 if __name__ == '__main__':
     numEpoches = 50
@@ -233,8 +231,6 @@ if __name__ == '__main__':
             if len(SNuIdx) > 10:
                 SNuIdx = random.sample(SNuIdx, 10)
 
-            # print 'SNuIdx=>', SNuIdx
-            # print 'SPuIdx=>', SPuIdx
             memoListSNuIdx.append(len(SNuIdx))
             memoListSPuIdx.append(len(SPuIdx))
             memoList.append(len(SNuIdx)+len(SPuIdx))
@@ -249,7 +245,6 @@ if __name__ == '__main__':
                     else:
                         ita = max(0, rate_hat-np.mean(curPred[0, SNuIdx[:]]))
 
-                    # print 'ita => %f'%ita
                     if len(SNuIdx) == 0:
                         nega_avg = np.zeros((1, M))
                     else:
@@ -266,7 +261,6 @@ if __name__ == '__main__':
 						itemMat[SNuIdx[j], :] = itemMat[SNuIdx[j], :] - alpha * ita * \
 										userMat[userID, :] - alpha * beta * itemMat[SNuIdx[j], :]
                     curPred = getCurPred(userID, numItem, userMat, itemMat, mu, bu, bi, userBitArray, itemBitArray)
-                    # print curPred[0, SPuIdx[ii]]
             timeList.append(time.time()-t10)
 
     ''' Evalutating '''
@@ -305,7 +299,6 @@ if __name__ == '__main__':
     print 'reservoirSize:', sizeRsv
     print 'numEpoches:', numEpoches
 
-
     distriINFO = np.zeros((3, numUser))
     distriINFO[0, :] = userBitArray
     distriINFO[1, :] = userBitArrayInTest
@@ -334,7 +327,6 @@ if __name__ == '__main__':
     f.write(str(sgdMF.MAE-er/testSet.shape[0]))
     f.write('\n')
     f.close()
-
 
     f = open('resultTimeImpML.txt','a')
     for i in xrange(0, len(timeList)):

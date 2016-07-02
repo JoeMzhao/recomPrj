@@ -91,7 +91,6 @@ class svdTrain():
                 self.itemMat[item[1]]=np.add(self.itemMat[item[1]],np.multiply(self.gamma,np.add(np.multiply(error, self.userMat[item[0]]),np.multiply(-self.lambdaval,self.itemMat[item[1]]))))
                 self.userMat[item[0]]=np.add(self.userMat[item[0]],np.multiply(self.gamma,np.add(np.multiply(error, self.itemMat[item[1]]),np.multiply(-self.lambdaval,self.userMat[item[0]]))))
             print 'Epoch',l,'finished!'
-
         self.eva()
 
     def eva(self):
@@ -99,9 +98,7 @@ class svdTrain():
         MAESum = 0
         for item in self.testSet:
             MAECount += 1
-            # print self.rBar(item[0],item[1])
             MAESum = MAESum + abs(self.rBar(item[0],item[1])-float(item[2]))
-
         print 'finished testing!'
         MAE = MAESum/MAECount
         self.MAE = MAE
@@ -130,7 +127,6 @@ def getCurPred(userID, numItem, userMat, itemMat, mu, bu, bi, userBitArray, item
 
 
 if __name__ == '__main__':
-
     numEpoches = 50
     toffline = time.time()
     sgdMF = svdTrain()
@@ -226,14 +222,13 @@ if __name__ == '__main__':
             curPred = getCurPred(userID, numItem, userMat, itemMat, mu, bu, bi, userBitArray, itemBitArray)
 
             SPuIdx = sp.smpPosiInput(curPred, userPool1, numUser, numItem)
+
             if len(SPuIdx) > 10:
                 SPuIdx = random.sample(SPuIdx, 10)
             SNuIdx = sp.smpNegaInput(curPred, userPool2, SPuIdx, numUser, numItem)
             if len(SNuIdx) > 10:
                 SNuIdx = random.sample(SNuIdx, 10)
 
-            # print 'SNuIdx=>', SNuIdx
-            # print 'SPuIdx=>', SPuIdx
             memoListSPuIdx.append(len(SPuIdx))
             memoListSNuIdx.append(len(SNuIdx))
             memoList.append(len(SPuIdx)+len(SNuIdx))
@@ -270,7 +265,6 @@ if __name__ == '__main__':
                     # print curPred[0, SPuIdx[ii]]
             alphaList[userID, 0] = alpha
             timeList.append(time.time()-t10)
-
 
     ''' Evalutating '''
     increMAEcount = 0
@@ -336,7 +330,6 @@ if __name__ == '__main__':
     f.write(str(sgdMF.MAE-er/testSet.shape[0]))
     f.write('\n')
     f.close()
-
 
     f = open('resultTimeImpML.txt','a')
     for i in xrange(0, len(timeList)):

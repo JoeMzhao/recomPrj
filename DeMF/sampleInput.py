@@ -7,7 +7,6 @@ def smpPosiInput(curPred, userPool1, numUser, numItem):
 
     for i in xrange (0, userPool1.shape[0]):
         poolRateMat[0, userPool1[i, 1]] = userPool1[i, 2]
-
     meanScore = np.mean(userPool1[:, 2])-1
 
     for j in xrange (0, numItem):
@@ -17,9 +16,7 @@ def smpPosiInput(curPred, userPool1, numUser, numItem):
             posiItemIdx.append(j)
         else:
             continue
-
     return posiItemIdx
-
 
 def smpNegaInput(curPred, userPool2, SPuIdx, numUser, numItem):
     negaItemIdx=[]
@@ -35,6 +32,4 @@ def smpNegaInput(curPred, userPool2, SPuIdx, numUser, numItem):
             negaItemIdx.append(j)
         else:
             continue
-        # print 'curPred and actuall rate, SNuIdx:', curPred[0, j], poolRateMat[0, j]
-    # print 'returned negative index:', negaItemIdx
     return negaItemIdx

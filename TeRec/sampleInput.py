@@ -17,7 +17,6 @@ def smpPosiInput(curPred, userPool1, numUser, numItem):
             posiItemIdx.append(j)
         else:
             continue
-
     return posiItemIdx
 
 
@@ -35,6 +34,4 @@ def smpNegaInput(curPred, userPool2, SPuIdx, numUser, numItem):
             negaItemIdx.append(j)
         else:
             continue
-        # print 'curPred and actuall rate, SNuIdx:', curPred[0, j], poolRateMat[0, j]
-    # print 'returned negative index:', negaItemIdx
     return negaItemIdx
