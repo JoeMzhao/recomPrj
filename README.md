@@ -65,8 +65,9 @@ Experimental results will be written in following .txt file:
  * memory consumption of users. Offline result is shown on terminal console.
 * resultTimeImpML.txt: 
  * time consumption of users. Offline result is shown on terminal console.
-* performance.txt => each row has format:
- * $\alpha$, $\beta$, sizeofResv, numEpoches, iteration, pureMFmae, improvedMAE, maeImprovements
+* performance.txt:
+	* each row has format:
+ 		* $\alpha$, $\beta$, sizeofResv, numEpoches, iteration, pureMFmae, improvedMAE, maeImprovements
 *  mae_distribution.txt:
  *   MAE improvements of each user.
 
