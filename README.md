@@ -6,6 +6,7 @@ Capturing users' preferences drift is a crucial property of a successful recomme
 * Lower trend to diverge.
 
 
+
 ### Structure
 ----------------------
 	  
