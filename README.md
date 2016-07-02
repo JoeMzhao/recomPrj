@@ -91,6 +91,10 @@ Using MATLAB to generate all plots:
 
 The memory and time consumption for each user is written in files `memoValueImpML.txt` and `resultTimeImpML.txt`. To run this some manual actions have to be made since every time the number of rating events could be different. However, this figure is intuitive and simple thus not included a .m file.  
 
+![DeMf](https://github.com/JoeMzhao/recomPrj/blob/master/figures/impCVX.png)
+![TeRec](https://github.com/JoeMzhao/recomPrj/blob/master/figures/terecCVX.png)
+
+
  
 
 
