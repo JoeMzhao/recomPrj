@@ -1,4 +1,4 @@
-# DeMF: an online recommender systems based on matrix factorisation
+# DeMF: an online recommender system based on matrix factorisation
 
 Capturing users' preferences drift is a crucial property of a successful recommender systems. Based on TeRec, proposed by [Chen et al.](http://www.vldb.org/pvldb/vol6/p1254-chen.pdf), we propose DeMF, which is an online recommender system based on matrix factorisation technique, introduced by [Koren et al.](https://datajobs.com/data-science-repo/Recommender-Systems-[Netflix].pdf). We evaluated performance of both two models on [MovieLens-100k](http://grouplens.org/datasets/movielens/100k/) and [Ciao](http://www.jiliang.xyz/trust.html). The results show that compared with TeRec, DeMF show its superior properties in following aspects:
 
